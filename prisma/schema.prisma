@@ -1,0 +1,201 @@
+// Prisma Schema for SIATI (Sistem Informasi Aduan & Ticketing IT Rumah Sakit Pemerintah)
+// MariaDB 10.11+ / MySQL compatible
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPERADMIN
+  MANAGEMENT
+  HELPDESK
+  TECHNICIAN
+  STAFF_USER
+}
+
+enum TicketUrgency {
+  EMERGENCY // P1 (< 5 min SLA)
+  HIGH      // P2 (< 15 min SLA)
+  MEDIUM    // P3 (< 30 min SLA)
+  LOW       // P4 (< 60 min SLA)
+}
+
+enum TicketStatus {
+  SUBMITTED
+  ASSIGNED
+  IN_PROGRESS
+  PENDING_PARTS
+  RESOLVED
+  CLOSED
+  REJECTED
+}
+
+enum AttachmentType {
+  IMAGE
+  VIDEO
+}
+
+model User {
+  id               String          @id @default(uuid())
+  username         String          @unique @db.VarChar(50) // Nama depan user (contoh: rian, siti, admin)
+  nip              String?         @db.VarChar(50)
+  fullName         String          @db.VarChar(150)
+  phoneNumber      String          @db.VarChar(20)
+  telegramChatId   String?         @db.VarChar(50)
+  role             Role            @default(STAFF_USER)
+  passwordHash     String          @db.VarChar(255)
+  departmentUnitId Int
+  departmentUnit   DepartmentUnit  @relation(fields: [departmentUnitId], references: [id])
+  assignedTickets  Ticket[]        @relation("TechnicianAssigned")
+  createdTickets   Ticket[]        @relation("ReporterUser")
+  auditLogs        SystemAuditLog[]
+  failedLoginCount Int             @default(0)
+  lockedUntil      DateTime?
+  isActive         Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([username])
+  @@index([role])
+  @@index([departmentUnitId])
+  @@map("users")
+}
+
+model DepartmentUnit {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(100) // Contoh: IGD, Poliklinik Gigi, Bangsal Melati
+  buildingZone String   @db.VarChar(100) // Contoh: Gedung A Lantai 1
+  qrIdentifier String   @unique @default(uuid()) @db.VarChar(100)
+  users        User[]
+  tickets      Ticket[]
+
+  @@map("department_units")
+}
+
+model Category {
+  id               Int      @id @default(autoincrement())
+  name             String   @unique @db.VarChar(100) // SIMRS, Hardware, Printer, Jaringan, Fasilitas Penunjang
+  description      String?  @db.VarChar(255)
+  targetSlaMinutes Int      @default(30)
+  tickets          Ticket[]
+
+  @@map("categories")
+}
+
+model Ticket {
+  id                   String               @id @default(uuid())
+  ticketNumber         String               @unique @db.VarChar(50) // TKT-YYYYMMDD-XXXX
+  reporterId           String
+  reporter             User                 @relation("ReporterUser", fields: [reporterId], references: [id])
+  unitId               Int
+  unit                 DepartmentUnit       @relation(fields: [unitId], references: [id])
+  categoryId           Int
+  category             Category             @relation(fields: [categoryId], references: [id])
+  urgency              TicketUrgency        @default(MEDIUM)
+  status               TicketStatus         @default(SUBMITTED)
+  description          String               @db.Text
+  assignedTechnicianId String?
+  assignedTechnician   User?                @relation("TechnicianAssigned", fields: [assignedTechnicianId], references: [id])
+
+  // SLA & Stopwatch Time Tracking (Dalam Menit)
+  submittedAt          DateTime             @default(now())
+  firstAssignedAt      DateTime?
+  workStartedAt        DateTime?
+  workResolvedAt       DateTime?
+  closedAt             DateTime?
+  totalPendingMinutes  Int                  @default(0)
+  responseMinutes      Int?                 // submittedAt -> firstAssignedAt (Menit)
+  repairMinutes        Int?                 // workStartedAt -> workResolvedAt (dikurangi pending) (Menit)
+  totalLeadMinutes     Int?                 // submittedAt -> workResolvedAt (Menit)
+
+  attachments          TicketAttachment[]
+  timelineLogs         TicketTimelineLog[]
+  rating               TicketRating?
+
+  @@index([status])
+  @@index([urgency])
+  @@index([submittedAt])
+  @@index([reporterId])
+  @@index([assignedTechnicianId])
+  @@index([unitId])
+  @@index([categoryId])
+  @@map("tickets")
+}
+
+model TicketAttachment {
+  id              String         @id @default(uuid())
+  ticketId        String
+  ticket          Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fileType        AttachmentType
+  originalName    String         @db.VarChar(255)
+  storedFilename  String         @unique @db.VarChar(255) // UUIDv4.ext
+  filePath        String         @db.VarChar(500)
+  fileSizeBytes   Int
+  mimeType        String         @db.VarChar(100)
+  sha256Hash      String         @db.VarChar(64)
+  durationSeconds Int?           // Khusus video (maksimal 60 detik)
+  createdAt       DateTime       @default(now())
+
+  @@index([ticketId])
+  @@map("ticket_attachments")
+}
+
+model TicketTimelineLog {
+  id             BigInt        @id @default(autoincrement())
+  ticketId       String
+  ticket         Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actorUserId    String
+  actorName      String        @db.VarChar(150)
+  previousStatus TicketStatus?
+  newStatus      TicketStatus
+  notes          String?       @db.Text
+  createdAt      DateTime      @default(now())
+
+  @@index([ticketId])
+  @@map("ticket_timeline_logs")
+}
+
+model TicketRating {
+  id          String   @id @default(uuid())
+  ticketId    String   @unique
+  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ratingScore Int      @db.TinyInt // Skala 1 sampai 5
+  feedback    String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@map("ticket_ratings")
+}
+
+model SystemAuditLog {
+  id        BigInt   @id @default(autoincrement())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String   @db.VarChar(100) // LOGIN, FAILED_LOGIN, CREATE_TICKET, ASSIGN_TICKET, RESOLVE_TICKET, UPLOAD_MEDIA
+  ipAddress String   @db.VarChar(45)
+  userAgent String   @db.VarChar(255)
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+  @@index([userId])
+  @@map("system_audit_logs")
+}
+
+model CaptchaChallenge {
+  id         String   @id @default(uuid())
+  token      String   @unique @db.VarChar(128)
+  answerHash String   @db.VarChar(255)
+  expiresAt  DateTime
+  isUsed     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([token])
+  @@index([expiresAt])
+  @@map("captcha_challenges")
+}
