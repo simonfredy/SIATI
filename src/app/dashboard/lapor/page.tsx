@@ -30,8 +30,8 @@ export default async function LaporPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between">
-      <main className="max-w-2xl w-full mx-auto p-4 sm:p-6 flex-1">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col justify-between transition-colors">
+      <main className="max-w-5xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7 flex-1">
         <TicketFormClient
           defaultUnitId={user.departmentUnitId}
           units={units}

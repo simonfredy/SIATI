@@ -30,7 +30,7 @@ export async function createTicketAction(
   data: {
     unitId: number;
     categoryId: number;
-    urgency: TicketUrgency;
+    urgency?: TicketUrgency;
     description: string;
     attachments: AttachmentInput[];
   }
@@ -141,7 +141,8 @@ export async function createTicketAction(
  */
 export async function updateTicketStatusAction(data: {
   ticketId: string;
-  newStatus: TicketStatus;
+  newStatus?: TicketStatus;
+  urgency?: TicketUrgency;
   notes?: string;
   assignedTechnicianId?: string;
 }): Promise<ActionResult> {
@@ -152,10 +153,10 @@ export async function updateTicketStatusAction(data: {
 
   const validation = updateTicketStatusSchema.safeParse(data);
   if (!validation.success) {
-    return { success: false, message: "Parameter status tidak valid." };
+    return { success: false, message: "Parameter status atau urgensi tidak valid." };
   }
 
-  const { ticketId, newStatus, notes, assignedTechnicianId } = validation.data;
+  const { ticketId, newStatus, urgency, notes, assignedTechnicianId } = validation.data;
 
   try {
     const ticket = await prisma.ticket.findUnique({
@@ -167,9 +168,15 @@ export async function updateTicketStatusAction(data: {
     }
 
     const now = new Date();
-    const updateData: Record<string, unknown> = {
-      status: newStatus,
-    };
+    const updateData: Record<string, unknown> = {};
+
+    if (urgency) {
+      updateData.urgency = urgency;
+    }
+
+    if (newStatus) {
+      updateData.status = newStatus;
+    }
 
     // 1. Logika Durasi Respon (TTR): Saat tiket pertama kali di-assign ke teknisi
     if (newStatus === TicketStatus.ASSIGNED) {
@@ -216,6 +223,8 @@ export async function updateTicketStatusAction(data: {
       updateData.closedAt = now;
     }
 
+    const finalStatus = newStatus || ticket.status;
+
     // Update Tiket dan Buat Timeline Log
     await prisma.ticket.update({
       where: { id: ticketId },
@@ -226,8 +235,8 @@ export async function updateTicketStatusAction(data: {
             actorUserId: user.userId,
             actorName: user.fullName,
             previousStatus: ticket.status,
-            newStatus,
-            notes: notes || `Status diubah ke ${newStatus}`,
+            newStatus: finalStatus,
+            notes: notes || (urgency ? `Urgensi diset ke ${urgency}` : `Status diubah ke ${finalStatus}`),
           },
         },
       },
@@ -237,15 +246,15 @@ export async function updateTicketStatusAction(data: {
     await prisma.systemAuditLog.create({
       data: {
         userId: user.userId,
-        action: `TICKET_STATUS_${newStatus}`,
+        action: urgency ? `TICKET_SET_URGENCY_${urgency}` : `TICKET_STATUS_${finalStatus}`,
         ipAddress: "127.0.0.1",
         userAgent: "Browser",
-        payload: { ticketNumber: ticket.ticketNumber, previousStatus: ticket.status, newStatus },
+        payload: { ticketNumber: ticket.ticketNumber, previousStatus: ticket.status, newStatus: finalStatus, urgency },
       },
     });
 
     revalidatePath("/dashboard");
-    return { success: true, message: `Status tiket berhasil diubah menjadi ${newStatus}.` };
+    return { success: true, message: "Tiket berhasil diperbarui." };
   } catch (error) {
     console.error("Gagal memperbarui status tiket:", error);
     return { success: false, message: "Terjadi kesalahan saat memperbarui tiket." };

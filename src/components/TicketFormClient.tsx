@@ -13,10 +13,10 @@ import {
   Send,
   AlertCircle,
   CheckCircle2,
-  Image as ImageIcon,
   Loader2,
   MapPin,
   Sparkles,
+  ShieldAlert,
 } from "lucide-react";
 
 interface Unit {
@@ -50,7 +50,6 @@ export default function TicketFormClient({
 
   const [unitId, setUnitId] = useState<number>(defaultUnitId);
   const [categoryId, setCategoryId] = useState<number>(categories[0]?.id || 1);
-  const [urgency, setUrgency] = useState<TicketUrgency>(TicketUrgency.MEDIUM);
   const [description, setDescription] = useState("");
 
   const [attachments, setAttachments] = useState<
@@ -67,7 +66,7 @@ export default function TicketFormClient({
   const photoInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  // Common quick template descriptions for nurses/doctors
+  // Quick suggestions template
   const quickTags = [
     "Printer label pasien macet / paper jam",
     "SIMRS hang saat simpan rekam medis",
@@ -76,7 +75,7 @@ export default function TicketFormClient({
     "Koneksi WiFi / internet ruangan terputus",
   ];
 
-  // Handler Upload Media Langsung ke API Sanitasi Magic Bytes
+  // Upload handler with magic bytes validation
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -104,7 +103,6 @@ export default function TicketFormClient({
       setUploadError(error.message || "Gagal mengunggah berkas.");
     } finally {
       setIsUploading(false);
-      // Reset input agar bisa memilih file yang sama jika diinginkan
       if (e.target) e.target.value = "";
     }
   };
@@ -121,7 +119,7 @@ export default function TicketFormClient({
       const res = await createTicketAction({
         unitId,
         categoryId,
-        urgency,
+        urgency: TicketUrgency.MEDIUM, // Tingkat urgensi ditentukan staf TI RSBM
         description,
         attachments: attachments.map((att) => ({
           storedFilename: att.storedFilename,
@@ -144,28 +142,36 @@ export default function TicketFormClient({
   // Tampilan Sukses Setelah Terbit
   if (successResult) {
     return (
-      <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-xl max-w-lg mx-auto">
-        <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
-          <CheckCircle2 className="w-10 h-10" />
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-6 sm:p-8 md:p-10 text-center space-y-5 shadow-lg max-w-lg mx-auto transition-colors">
+        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
+          <CheckCircle2 className="w-10 h-10 sm:w-12 sm:h-12" />
         </div>
-        <h2 className="text-xl font-bold text-white tracking-tight">
-          Aduan Berhasil Diterbitkan!
-        </h2>
-        <div className="bg-slate-950 p-4 rounded-xl border border-sky-500/30 inline-block w-full">
-          <span className="text-xs text-slate-400 block">Nomor Tiket Resmi:</span>
-          <span className="text-2xl font-mono font-bold text-sky-400 tracking-wider">
+        <div className="space-y-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+            Aduan Berhasil Diterbitkan!
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            Tiket laporan Anda telah masuk ke sistem antrean TI RSBM.
+          </p>
+        </div>
+
+        <div className="bg-slate-50 dark:bg-slate-950 p-4 sm:p-5 rounded-2xl border border-sky-300 dark:border-sky-500/30 inline-block w-full shadow-inner">
+          <span className="text-xs text-slate-500 dark:text-slate-400 block font-medium">Nomor Tiket Resmi:</span>
+          <span className="text-2xl sm:text-3xl font-mono font-bold text-sky-600 dark:text-sky-400 tracking-wider">
             {successResult.ticketNumber}
           </span>
         </div>
-        <p className="text-xs text-slate-400 leading-relaxed">
-          Notifikasi telah dikirimkan ke tim siaga IT rumah sakit. Teknisi akan segera merespon sesuai skala prioritas yang ditentukan.
+
+        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
+          Notifikasi telah dikirimkan ke tim siaga TI rumah sakit. Staf TI akan segera menetapkan tingkat urgensi dan melakukan penanganan.
         </p>
+
         <div className="pt-2">
           <Link
             href="/dashboard"
-            className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow-md transition-all"
+            className="w-full inline-flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm shadow-md transition-all active:scale-95"
           >
-            Kembali ke Dashboard Tiket
+            Kembali ke Beranda Tiket
           </Link>
         </div>
       </div>
@@ -173,326 +179,291 @@ export default function TicketFormClient({
   }
 
   return (
-    <div className="space-y-5 pb-16">
+    <div className="space-y-5 sm:space-y-6 pb-20">
       {/* Header Form */}
-      <div className="flex items-center justify-between border-b border-white/10 pb-3">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard"
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/10 transition-colors"
+            className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 shadow-sm transition-colors shrink-0"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </Link>
-          <div>
-            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight">
-              Lapor Kendala IT Baru
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight truncate">
+              Lapor Kendala TI Baru
             </h1>
-            <p className="text-xs text-slate-400">
-              Pelapor: <strong className="text-slate-200">{userName}</strong>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+              Pelapor: <strong className="text-slate-800 dark:text-slate-200">{userName}</strong>
             </p>
           </div>
         </div>
       </div>
 
       {submitError && (
-        <div className="p-3.5 bg-rose-500/20 border border-rose-500/40 text-rose-300 rounded-xl text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
+        <div className="p-4 bg-rose-50 dark:bg-rose-500/20 border border-rose-200 dark:border-rose-500/40 text-rose-700 dark:text-rose-300 rounded-xl text-xs sm:text-sm flex items-center gap-2.5 shadow-sm">
+          <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
           <span>{submitError}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* 1. Pilih Lokasi / Unit Ruangan */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-sky-400" />
-            Lokasi Ruangan / Bangsal Pelayanan
-          </label>
-          <select
-            value={unitId}
-            onChange={(e) => setUnitId(Number(e.target.value))}
-            className="w-full px-3.5 py-3 rounded-xl border border-white/10 bg-slate-900 text-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all"
-          >
-            {units.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name} ({u.buildingZone})
-              </option>
-            ))}
-          </select>
-          <span className="text-[11px] text-slate-400 mt-1 block">
-            Pilih ruangan tempat perangkat IT yang bermasalah berada.
-          </span>
-        </div>
-
-        {/* 2. Pilih Kategori Masalah IT */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-            Kategori Kendala
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {categories.map((cat) => {
-              const isSelected = categoryId === cat.id;
-              return (
-                <button
-                  type="button"
-                  key={cat.id}
-                  onClick={() => setCategoryId(cat.id)}
-                  className={`p-3 rounded-xl border text-left transition-all ${
-                    isSelected
-                      ? "bg-sky-600/30 border-sky-400 text-white shadow-md shadow-sky-600/20"
-                      : "bg-slate-900/60 border-white/10 text-slate-300 hover:border-white/20"
-                  }`}
-                >
-                  <span className="font-bold text-xs block">{cat.name}</span>
-                  <span className="text-[10px] text-slate-400 mt-0.5 block">
-                    Target SLA: {cat.targetSlaMinutes} Menit
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 3. Tingkat Urgensi (SLA Impact) */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-            Tingkat Urgensi Masalah
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setUrgency(TicketUrgency.EMERGENCY)}
-              className={`p-3 rounded-xl border text-left transition-all ${
-                urgency === TicketUrgency.EMERGENCY
-                  ? "bg-rose-500/30 border-rose-400 text-rose-200 shadow-md shadow-rose-950/50"
-                  : "bg-slate-900/60 border-white/10 text-slate-400"
-              }`}
-            >
-              <span className="font-bold text-xs flex items-center gap-1.5 text-rose-400">
-                🔴 P1 - DARURAT
-              </span>
-              <span className="text-[10px] text-slate-300 block mt-0.5">
-                Pelayanan pasien berhenti total (IGD/Farmasi/OK)
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setUrgency(TicketUrgency.HIGH)}
-              className={`p-3 rounded-xl border text-left transition-all ${
-                urgency === TicketUrgency.HIGH
-                  ? "bg-orange-500/30 border-orange-400 text-orange-200 shadow-md shadow-orange-950/50"
-                  : "bg-slate-900/60 border-white/10 text-slate-400"
-              }`}
-            >
-              <span className="font-bold text-xs flex items-center gap-1.5 text-orange-400">
-                🟠 P2 - TINGGI
-              </span>
-              <span className="text-[10px] text-slate-300 block mt-0.5">
-                Layanan melambat tapi ada alternatif
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setUrgency(TicketUrgency.MEDIUM)}
-              className={`p-3 rounded-xl border text-left transition-all ${
-                urgency === TicketUrgency.MEDIUM
-                  ? "bg-amber-500/30 border-amber-400 text-amber-200 shadow-md shadow-amber-950/50"
-                  : "bg-slate-900/60 border-white/10 text-slate-400"
-              }`}
-            >
-              <span className="font-bold text-xs flex items-center gap-1.5 text-amber-400">
-                🟡 P3 - SEDANG
-              </span>
-              <span className="text-[10px] text-slate-300 block mt-0.5">
-                Kendala minor administrasi
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setUrgency(TicketUrgency.LOW)}
-              className={`p-3 rounded-xl border text-left transition-all ${
-                urgency === TicketUrgency.LOW
-                  ? "bg-emerald-500/30 border-emerald-400 text-emerald-200 shadow-md shadow-emerald-950/50"
-                  : "bg-slate-900/60 border-white/10 text-slate-400"
-              }`}
-            >
-              <span className="font-bold text-xs flex items-center gap-1.5 text-emerald-400">
-                🟢 P4 - RENDAH
-              </span>
-              <span className="text-[10px] text-slate-300 block mt-0.5">
-                Pemasangan baru / pemeliharaan rutin
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* 4. Deskripsi Gejala Kerusakan */}
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-              Deskripsi Masalah / Gejala Kerusakan
-            </label>
-            <span className="text-[11px] text-slate-400">Min. 10 Karakter</span>
-          </div>
-
-          {/* Quick Tags Suggestions */}
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {quickTags.map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => setDescription(tag)}
-                className="text-[10px] px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-white/10 flex items-center gap-1"
+      {/* Form Container: Responsive 1-col on mobile/fold, 2-col on Tablet & Desktop */}
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-6 md:p-7 lg:p-8 shadow-sm transition-colors"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 md:gap-8">
+          {/* Kolom Kiri (Mobile: Atas, Tablet & Desktop: Kiri 6-kolom): Lokasi & Kategori */}
+          <div className="md:col-span-6 space-y-5 sm:space-y-6">
+            {/* 1. Pilih Lokasi / Unit Ruangan */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
+                1. Lokasi Ruangan / Bangsal Pelayanan
+              </label>
+              <select
+                value={unitId}
+                onChange={(e) => setUnitId(Number(e.target.value))}
+                className="w-full px-3.5 py-3 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white dark:focus:bg-slate-850 transition-all font-medium"
               >
-                <Sparkles className="w-2.5 h-2.5 text-sky-400" />
-                {tag}
-              </button>
-            ))}
-          </div>
-
-          <textarea
-            required
-            rows={4}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Jelaskan kendala yang dialami, misalnya: Printer di meja kasir macet berbunyi beep terus dan lampu merah berkedip.."
-            className="w-full p-3.5 rounded-xl border border-white/10 bg-slate-900 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
-          />
-        </div>
-
-        {/* 5. Upload Lampiran Media (Foto & Video) */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-            Lampiran Bukti (Foto / Video Singkat 60s)
-          </label>
-
-          {/* Hidden inputs untuk file native camera capture */}
-          <input
-            type="file"
-            ref={photoInputRef}
-            onChange={handleFileUpload}
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-          />
-          <input
-            type="file"
-            ref={videoInputRef}
-            onChange={handleFileUpload}
-            accept="video/*"
-            capture="environment"
-            className="hidden"
-          />
-
-          {/* Action Buttons for Mobile Camera */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <button
-              type="button"
-              disabled={isUploading}
-              onClick={() => photoInputRef.current?.click()}
-              className="py-3 px-4 rounded-xl bg-slate-900 border border-white/15 hover:border-sky-400 text-slate-200 text-xs font-semibold flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-60"
-            >
-              <Camera className="w-4 h-4 text-sky-400" />
-              <span>Ambil / Pilih Foto</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={isUploading}
-              onClick={() => videoInputRef.current?.click()}
-              className="py-3 px-4 rounded-xl bg-slate-900 border border-white/15 hover:border-amber-400 text-slate-200 text-xs font-semibold flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-60"
-            >
-              <Video className="w-4 h-4 text-amber-400" />
-              <span>Rekam Video (60s)</span>
-            </button>
-          </div>
-
-          {/* Upload Status / Error */}
-          {isUploading && (
-            <div className="mt-2 text-xs text-sky-400 flex items-center gap-2 p-2 rounded-lg bg-sky-950/40 border border-sky-500/20">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Sedang memproses dan mensanitasi berkas aman...</span>
-            </div>
-          )}
-
-          {uploadError && (
-            <div className="mt-2 text-xs text-rose-400 flex items-center gap-2 p-2 rounded-lg bg-rose-950/40 border border-rose-500/20">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{uploadError}</span>
-            </div>
-          )}
-
-          {/* Thumbnail Preview Berkas Terupload */}
-          {attachments.length > 0 && (
-            <div className="mt-3 space-y-2">
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
-                Berkas Terlampir ({attachments.length}):
+                {units.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} — ({u.buildingZone})
+                  </option>
+                ))}
+              </select>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
+                Pilih ruangan tempat perangkat TI yang mengalami kendala.
               </span>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {attachments.map((att) => (
-                  <div
-                    key={att.storedFilename}
-                    className="relative group bg-slate-900 border border-white/10 rounded-xl p-2.5 flex items-center gap-2.5 overflow-hidden"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
-                      {att.fileType === "IMAGE" ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={att.previewUrl}
-                          alt="Thumbnail"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <Video className="w-5 h-5 text-amber-400" />
-                      )}
-                    </div>
+            </div>
 
-                    <div className="flex-1 min-w-0">
-                      <span className="text-xs font-medium text-white block truncate">
-                        {att.originalName}
-                      </span>
-                      <span className="text-[10px] text-slate-400 block">
-                        {(att.fileSizeBytes / (1024 * 1024)).toFixed(1)} MB • {att.fileType}
-                      </span>
-                    </div>
+            {/* 2. Pilih Kategori Masalah IT */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  2. Kategori Kendala TI
+                </label>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">Pilih salah satu</span>
+              </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {categories.map((cat) => {
+                  const isSelected = categoryId === cat.id;
+                  return (
                     <button
                       type="button"
-                      onClick={() => handleRemoveAttachment(att.storedFilename)}
-                      className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
-                      title="Hapus Lampiran"
+                      key={cat.id}
+                      onClick={() => setCategoryId(cat.id)}
+                      className={`p-3.5 rounded-xl border text-left transition-all ${
+                        isSelected
+                          ? "bg-sky-50 dark:bg-sky-600/20 border-sky-500 dark:border-sky-400 text-sky-950 dark:text-white ring-2 ring-sky-500/20 shadow-sm"
+                          : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/20"
+                      }`}
                     >
-                      <X className="w-4 h-4" />
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-xs sm:text-sm block">{cat.name}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${isSelected ? "bg-sky-200 dark:bg-sky-500/30 text-sky-800 dark:text-sky-200" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"}`}>
+                          SLA {cat.targetSlaMinutes}m
+                        </span>
+                      </div>
+                      {cat.description && (
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block line-clamp-1">
+                          {cat.description}
+                        </span>
+                      )}
                     </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Tombol Terbitkan Tiket Sticky */}
-        <div className="pt-3">
-          <button
-            type="submit"
-            disabled={isPending || isUploading || description.trim().length < 10}
-            className="w-full py-3.5 px-4 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 active:scale-[0.99] text-white font-bold rounded-xl shadow-lg shadow-sky-600/30 flex items-center justify-center gap-2 text-sm transition-all disabled:opacity-50 disabled:pointer-events-none"
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Menerbitkan Tiket...
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                Terbitkan Tiket Aduan Sekarang
-              </>
-            )}
-          </button>
+            {/* 3. Banner Informasi Urgensi */}
+            <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-500/30 flex items-start gap-3">
+              <ShieldAlert className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-blue-900 dark:text-blue-200 block">
+                  Tingkat Urgensi Ditentukan oleh Tim TI
+                </span>
+                <p className="text-[11px] text-blue-700 dark:text-blue-300/90 leading-relaxed">
+                  Untuk menjamin objektivitas dan penanganan kasus darurat medis (P1 IGD/OK) tepat sasaran, skala prioritas tiket akan ditentukan langsung oleh staf TI saat tiket diterima.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Kolom Kanan (Mobile: Bawah, Tablet & Desktop: Kanan 6-kolom): Deskripsi, Lampiran, Tombol */}
+          <div className="md:col-span-6 space-y-5 sm:space-y-6 flex flex-col justify-between">
+            <div className="space-y-5 sm:space-y-6">
+              {/* 4. Deskripsi Gejala Kerusakan */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    3. Deskripsi Masalah & Gejala Kerusakan
+                  </label>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Min. 10 Karakter</span>
+                </div>
+
+                {/* Quick Tags Suggestions */}
+                <div className="flex flex-wrap gap-1.5 py-1">
+                  {quickTags.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setDescription(tag)}
+                      className="text-[10px] xs:text-[11px] px-2.5 sm:px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 flex items-center gap-1.5 active:scale-95 transition-all text-left"
+                    >
+                      <Sparkles className="w-3 h-3 text-sky-500 dark:text-sky-400 shrink-0" />
+                      <span className="truncate max-w-[200px] xs:max-w-[260px] sm:max-w-none">{tag}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <textarea
+                  required
+                  rows={4}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Jelaskan kendala yang dialami secara rinci, misalnya: Printer di meja kasir macet berbunyi beep terus dan lampu merah berkedip saat cetak struk.."
+                  className="w-full p-3.5 sm:p-4 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs sm:text-sm placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white dark:focus:bg-slate-850 transition-all leading-relaxed"
+                />
+              </div>
+
+              {/* 5. Upload Lampiran Media (Foto & Video) */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    4. Lampiran Bukti (Foto / Video 60s)
+                  </label>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">Opsional</span>
+                </div>
+
+                {/* Hidden native camera inputs */}
+                <input
+                  type="file"
+                  ref={photoInputRef}
+                  onChange={handleFileUpload}
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                />
+                <input
+                  type="file"
+                  ref={videoInputRef}
+                  onChange={handleFileUpload}
+                  accept="video/*"
+                  capture="environment"
+                  className="hidden"
+                />
+
+                {/* Action Buttons: Stack on narrow fold (<360px), 2-col on standard screens */}
+                <div className="grid grid-cols-1 xs:grid-cols-2 gap-2.5 sm:gap-3">
+                  <button
+                    type="button"
+                    disabled={isUploading}
+                    onClick={() => photoInputRef.current?.click()}
+                    className="py-3 sm:py-3.5 px-4 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 border border-slate-300 dark:border-white/15 hover:border-sky-500 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-60 shadow-sm"
+                  >
+                    <Camera className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
+                    <span>Ambil / Pilih Foto</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isUploading}
+                    onClick={() => videoInputRef.current?.click()}
+                    className="py-3 sm:py-3.5 px-4 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 border border-slate-300 dark:border-white/15 hover:border-amber-500 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-60 shadow-sm"
+                  >
+                    <Video className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span>Rekam Video (60s)</span>
+                  </button>
+                </div>
+
+                {/* Upload Status / Error */}
+                {isUploading && (
+                  <div className="text-xs text-sky-700 dark:text-sky-300 flex items-center gap-2 p-3 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-500/20">
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                    <span>Sedang memproses & memindai keamanan berkas...</span>
+                  </div>
+                )}
+
+                {uploadError && (
+                  <div className="text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-500/20">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{uploadError}</span>
+                  </div>
+                )}
+
+                {/* Thumbnail Preview Berkas Terupload */}
+                {attachments.length > 0 && (
+                  <div className="space-y-2 pt-1">
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">
+                      Berkas Terlampir ({attachments.length}):
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {attachments.map((att) => (
+                        <div
+                          key={att.storedFilename}
+                          className="relative group bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl p-3 flex items-center gap-3 overflow-hidden shadow-sm"
+                        >
+                          <div className="w-11 h-11 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
+                            {att.fileType === "IMAGE" ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={att.previewUrl}
+                                alt="Thumbnail"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Video className="w-5 h-5 text-amber-500" />
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <span className="text-xs font-semibold text-slate-800 dark:text-white block truncate">
+                              {att.originalName}
+                            </span>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
+                              {(att.fileSizeBytes / (1024 * 1024)).toFixed(1)} MB • {att.fileType}
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAttachment(att.storedFilename)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                            title="Hapus Lampiran"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Tombol Terbitkan Tiket */}
+            <div className="pt-3">
+              <button
+                type="submit"
+                disabled={isPending || isUploading || description.trim().length < 10}
+                className="w-full py-4 px-5 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 active:scale-[0.99] text-white font-bold rounded-xl shadow-lg shadow-sky-600/25 flex items-center justify-center gap-2 text-sm sm:text-base transition-all disabled:opacity-50 disabled:pointer-events-none"
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Menerbitkan Tiket...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-5 h-5" />
+                    Terbitkan Tiket Aduan Sekarang
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       </form>
     </div>

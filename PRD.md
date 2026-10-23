@@ -5,12 +5,12 @@
 
 | Metadata Dokumen | Spesifikasi Teknis Produk |
 | :--- | :--- |
-| **Nama Produk** | **SIATI** (Sistem Informasi Aduan & Ticketing IT) |
-| **Instansi Sasaran** | Rumah Sakit Pemerintah (RSUD / RSUP) |
-| **Versi Dokumen** | **1.1.0** *(Updated with Architectural Decisions)* |
-| **Status** | **Approved & Finalized** |
-| **Pola Arsitektur** | **Fullstack TypeScript (Next.js 14+ App Router + PWA)** |
-| **Database & ORM** | **MariaDB 10.11+ LTS** dengan **Prisma ORM** |
+| **Nama Produk** | **SIATI RSBM** (Sistem Informasi Aduan & Ticketing IT) |
+| **Instansi Sasaran** | Rumah Sakit Bhayangkara Medan (RSBM) |
+| **Versi Dokumen** | **1.3.0** *(Updated with Executive Management & Karumkit Portal, SLA Scorecard, SKP Matrix, & Official Report Export)* |
+| **Status** | **Approved & Production-Ready** |
+| **Pola Arsitektur** | **Fullstack TypeScript (Next.js 16+ Turbopack App Router + PWA)** |
+| **Database & ORM** | **MariaDB 10.11+ LTS** dengan **Prisma ORM 6.x** |
 | **Server & Reverse Proxy** | **Nginx** (SSL TLS 1.3, Rate Limiting, Protected Storage via `X-Accel`) |
 | **Otentikasi & Akses** | **Wajib Login Pegawai** (NIP/Username, Role-Based Access Control / RBAC) |
 | **Notifikasi Gateway** | **Self-Hosted WhatsApp (Baileys Engine)** & **Telegram Bot API** |
@@ -50,17 +50,15 @@ flowchart TD
         Login[Login NIP / Password Pegawai] --> JWT[Session Cookie: HttpOnly + Secure]
     end
 
-    JWT -->|Role: STAFF_USER| P1[Nakes / Pegawai RS]
-    JWT -->|Role: TECHNICIAN| P2[Teknisi IT Lapangan]
-    JWT -->|Role: HELPDESK| P3[Operator Dispatcher IT]
-    JWT -->|Role: MANAGEMENT| P4[Kepala SIMRS / Direksi]
-    JWT -->|Role: SUPERADMIN| P5[Administrator Sistem & Keamanan]
+    JWT -->|Role: STAFF_USER| P1[Nakes / Pegawai RSBM]
+    JWT -->|Role: IT_STAFF| P2[Staf TI RSBM - Helpdesk & Lapangan]
+    JWT -->|Role: MANAGEMENT| P3[Karumkit / Direksi RSBM]
+    JWT -->|Role: SUPERADMIN| P4[Administrator Sistem & Keamanan]
 
     P1 -->|Fitur| F1[Buat Tiket + Upload Media, Riwayat Tiket Saya, Rating Layanan]
-    P2 -->|Fitur| F2[Ambil Tiket, Stopwatch Pengerjaan, Pending Sparepart, Selesaikan]
-    P3 -->|Fitur| F3[Triase Tiket, Penugasan Teknisi, Monitoring Antrean Live]
-    P4 -->|Fitur| F4[Laporan Rekapitulasi Menit SLA, Heatmap Kerusakan, KPI Teknisi]
-    P5 -->|Fitur| F5[Audit Logs, Master Lokasi, Konfigurasi WA/Telegram, Security Rules]
+    P2 -->|Fitur| F2[Pusat Kendali: Antrean & Urgensi RS, Ambil & Kerjakan Sendiri, Stopwatch Menit Kerja]
+    P3 -->|Fitur| F3[Laporan Rekapitulasi Menit SLA, Heatmap Kerusakan, KPI Layanan]
+    P4 -->|Fitur| F4[Audit Logs, Master Lokasi, Konfigurasi WA/Telegram, Security Rules]
 ```
 
 ---
@@ -181,26 +179,101 @@ https://siati.rsud.go.id/teknisi/tiket/TKT-20261023-0012
 
 ---
 
-### 4.4 Rekapitulasi Durasi Penanganan IT (Presisi Menit)
+### 4.4 Modul Portal Eksekutif Direksi & Manajemen RSBM (Executive Governance & SLA Scorecard)
+Sebagai modul kendali bagi pimpinan rumah sakit (**Karumkit, Wakil Kepala Rumah Sakit, Direksi Medis & Penunjang, serta Kepala Bagian Tata Usaha**), antarmuka dengan peran `MANAGEMENT` menyajikan visualisasi data analitik tingkat tinggi, evaluasi kepatuhan SLA, serta audit kinerja staf TI yang dapat dipertanggungjawabkan dalam akreditasi rumah sakit (KARS/STARKES):
 
-#### Metrik Waktu Kunci (Stopwatch Terotomatisasi):
-1. **Waktu Respon (TTR - Time to Respond)**:
-   $$\text{Durasi Respon} = \text{Waktu Tiket Diambil} - \text{Waktu Tiket Dibuat}$$
-2. **Waktu Menuju Lokasi (Travel Time)**:
-   $$\text{Waktu Tiba} = \text{Waktu Teknisi Tiba di Ruangan} - \text{Waktu Tiket Diambil}$$
-3. **Durasi Pengerjaan Bersih (Net Resolution Time)**:
-   $$\text{Durasi Kerja} = (\text{Waktu Tiket Selesai} - \text{Waktu Mulai Kerja}) - \text{Total Waktu Jeda (Pending Sparepart)}$$
-4. **Total Durasi Siklus (Lead Time)**:
-   Total menit dari pelaporan awal hingga masalah teratasi penuh.
+#### 1. Executive Scorecard & Filter Rentang Waktu Per Tanggal:
+- **Rentang Waktu Per Tanggal Khusus 6 Kartu KPI**:
+  - Dilengkapi *Date Range Picker* mandiri (`Dari Tanggal` s/d `Sampai Tanggal`) berbasis input kalender lokal (`YYYY-MM-DD`).
+  - Didukung tombol pintas instan (*Quick Presets*): **Hari Ini**, **7 Hari Terakhir**, **Bulan Ini**, dan **Semua Waktu**.
+  - Mengkalkulasi 6 indikator kinerja utama secara real-time berdasarkan tanggal yang ditentukan:
+    1. **Total Aduan Masuk**: Menghitung volume kumulatif aduan dalam rentang tanggal terpilih beserta rincian status (*Selesai*, *Dikerjakan*, *Menunggu Suku Cadang*, *Antrean Baru*).
+    2. **Tingkat Kepatuhan SLA (%)**:
+       $$\text{Persentase Kepatuhan SLA} = \left(\frac{\text{Jumlah Tiket Selesai Sesuai Target SLA Kategori}}{\text{Total Tiket Diselesaikan}}\right) \times 100\%$$
+       - Standar Mutu Rumah Sakit Bhayangkara Medan: $\ge 90.0\%$ (Lengkap dengan visual progress bar & status kelayakan akreditasi).
+    3. **MTTA (Mean Time to Acknowledge / Kecepatan Respon Awal)**:
+       $$\text{MTTA} = \frac{\sum (\text{Waktu Tiket Direspons} - \text{Waktu Tiket Dilaporkan})}{\text{Jumlah Tiket Terrespons}}$$
+       - Mengukur kecepatan helpdesk dan teknisi siaga dalam merespons aduan nakes (Target RSBM: $< 15$ menit).
+    4. **MTTR (Mean Time to Repair / Stopwatch Pengerjaan Bersih)**:
+       $$\text{MTTR} = \frac{\sum (\text{Waktu Tiket Selesai} - \text{Waktu Mulai Kerja} - \text{Waktu Jeda Suku Cadang})}{\text{Jumlah Tiket Selesai}}$$
+       - Mengukur efisiensi teknis penanganan masalah hingga perangkat normal kembali.
+    5. **Indeks Kepuasan Pengguna / CSAT (Customer Satisfaction Score)**:
+       - Rata-rata bintang penilaian langsung (skala 1.0 - 5.0) dari staf medis/nakes pelapor setelah aduan dinyatakan selesai.
+    6. **Insiden Kritis Darurat (P1 Emergency)**:
+       - Pemantauan khusus terhadap gangguan pada titik vital pelayanan pasien (IGD, Kamar Operasi, Farmasi Antrean Macet).
 
-#### Fitur Rekapitulasi & Reporting di Dashboard:
-* **Tabel Rekapitulasi Kinerja Bulanan**:
-  * Kolom: No, Nama Teknisi, Total Tiket Selesai, Rata-rata Menit Respon, Rata-rata Menit Perbaikan, Persentase Sesuai SLA (%), Skor Kepuasan.
-* **Fitur Pause/Pending dengan Alasan Resmi**:
-  * Jika perbaikan tertunda karena menunggu pembelian suku cadang (misal motherboard/cartridge), teknisi dapat mengaktifkan status `PENDING_SPAREPART`. Stopwatch pengerjaan akan dijeda agar tidak merusak penilaian SLA teknisi.
-* **Export Data**:
-  * Export rekap ke **Excel (XLSX)** lengkap dengan rincian menit untuk lampiran penilaian SKP (Sasaran Kinerja Pegawai) / TPP tenaga IT RS.
-  * Export ringkasan eksekutif ke **PDF**.
+#### 2. Heatmap & Pemetaan Beban Kendala Unit / Bangsal Rumah Sakit:
+- Dilengkapi bilah filter rentang waktu per tanggal mandiri untuk menganalisis insiden ruangan pada periode tertentu.
+- Visualisasi peringkat ruangan dan bangsal berdasarkan intensitas gangguan fasilitas TI untuk mendeteksi *hotspot* kerusakan berulang.
+- **Pagination Terintegrasi**: Tabel daftar ruangan dibatasi 6 baris per halaman dilengkapi tombol navigasi halaman (*Next*, *Previous*, *Page Number*) untuk menjaga keterbacaan pada layar desktop dan tablet.
+
+#### 3. Distribusi 5 Pilar Kategori Masalah TI:
+- Analisis proporsi masalah dan rata-rata waktu perbaikan pada 5 pilar utama:
+  1. **SIMRS & RME**: Kendala Khanza/Web RME, bridging BPJS V-Claim, e-prescribing resep obat.
+  2. **Software Lainnya**: Sistem pemanggil antrean loket, sistem PACS radiologi, OS & antivirus.
+  3. **Hardware & PC**: Komputer tindakan medis, monitor ICU, scanner barcode, printer label etiket.
+  4. **Jaringan**: Kabel LAN medis, access point WiFi visit dokter di bangsal rawat inap, koneksi internet.
+  5. **Fasilitas Penunjang TI**: PABX telepon interkom nakes, sound system poliklinik, CCTV keamanan.
+
+#### 4. Matriks Kinerja Staf & Teknisi TI (Scorecard SKP & Remunerasi):
+- Dilengkapi filter rentang tanggal mandiri untuk evaluasi kinerja bulanan, triwulanan, maupun semesteran.
+- **Tabel Kinerja & Pagination**: Memuat penilaian objektif per personel Staf TI (`IT_STAFF`):
+  - **Identitas**: Nama Lengkap Petugas, NIP, Akun Sistem.
+  - **Volume Kerja**: Total tiket ditugaskan dan total tiket diselesaikan.
+  - **Kecepatan**: Rata-rata waktu respon (MTTA menit) dan rata-rata pengerjaan (MTTR menit).
+  - **Kepatuhan SLA**: Persentase tiket diselesaikan di bawah target waktu kategori (%).
+  - **Kualitas**: Rata-rata rating kepuasan bintang (1 - 5) dan jumlah responden nakes.
+  - **Grade Evaluasi**:
+    - 🌟 **Grade A (Sangat Memuaskan)**: Kepatuhan SLA $\ge 90\%$ dan Skor Rating $\ge 4.5$.
+    - ✅ **Grade B (Memuaskan)**: Kepatuhan SLA $\ge 80\%$ dan Skor Rating $\ge 4.0$.
+    - ⚠️ **Grade C (Perlu Peningkatan)**: Kepatuhan SLA $< 80\%$.
+  - **Navigasi Halaman**: Mendukung paginasi 6 staf per halaman dengan tombol navigasi numerik.
+- Menjadi dokumen rujukan sah bagi pimpinan rumah sakit untuk evaluasi Sasaran Kinerja Pegawai (SKP) dan penetapan Tambahan Penghasilan Pegawai (TPP) / insentif bulanan.
+
+#### 5. Audit Rekapitulasi Tiket Presisi Menit & Pagination Fleksibel:
+- **Filter Multi-Dimensi Lengkap**:
+  - Filter rentang waktu per tanggal (`Dari Tanggal` s/d `Sampai Tanggal`) dengan tombol pintas Hari Ini, 7 Hari, Bulan Ini, dan Semua.
+  - Pencarian bebas (No. Tiket, Kendala, Ruangan, Teknisi, atau Nakes).
+  - Filter unit kerja/ruangan, filter kategori masalah, filter tingkat urgensi (P1-P4), dan filter status pengerjaan.
+- **Sistem Paginasi Fleksibel (Configurable Pagination)**:
+  - Pilihan jumlah baris data per halaman: **10 / 25 / 50 data**.
+  - Indikator posisi data: *Menampilkan X - Y dari Z data*.
+  - Tombol navigasi: Halaman Sebelumnya, Tombol Angka Halaman, dan Halaman Berikutnya.
+  - Reset otomatis ke halaman 1 saat filter pencarian diubah.
+- **Drill-Down Modal Audit**: Melihat rekam jejak tiket secara menyeluruh: kronologi stopwatch (submitted, assigned, resolved), catatan perbaikan teknisi, foto kendala, serta feedback rating nakes.
+
+#### 6. Wawasan Strategis & Rekomendasi Manajerial Aset TI:
+- Dilengkapi filter rentang tanggal mandiri untuk mengevaluasi rekomendasi peremajaan perangkat keras, penambahan access point jaringan bangsal, pemeliharaan integrasi BPJS V-Claim, dan evaluasi kecukupan shift teknisi pada kurun waktu terkait.
+
+#### 7. Ekspor Data Excel (CSV UTF-8) & Format Cetak Resmi Kop RS Bhayangkara Medan:
+- **Export CSV/Excel**: Ekspor seluruh rekaman tiket yang sedang difilter beserta presisi waktu respon dan waktu pengerjaan dalam menit dengan format UTF-8 BOM untuk pengolahan spreadsheet SKP.
+- **Cetak Laporan Eksekutif Resmi**:
+  - Menggunakan format kop surat resmi:
+    *Kepolisian Negara Republik Indonesia Daerah Sumatera Utara Bidang Kedokteran dan Kesehatan Rumah Sakit Bhayangkara Tk II Medan*.
+  - Dilengkapi stempel tanggal cetak, identitas pemeriksa, dan kolom tanda tangan pengesahan Kepala Rumah Sakit Bhayangkara Medan.
+  - Otomatis menyembunyikan tombol navigasi saat diprint melalui peramban (`@media print`).
+
+---
+
+### 4.5 Modul Super Admin TI & Manajemen Keamanan Sistem
+Sebagai administrator pengendali tertinggi, akun dengan peran `SUPERADMIN` dibekali dasbor khusus untuk tata kelola seluruh entitas dan keamanan sistem rumah sakit:
+1. **Pusat Manajemen Pengguna Pegawai (User Management Portal)**:
+   - **Registrasi Pegawai Baru**: Mendaftarkan akun nakes/staf TI/manajemen dengan Username (nama depan), Nama Lengkap, NIP, Nomor WhatsApp, Role RBAC, Unit Penempatan, dan Kata Sandi default (`Password123!`).
+   - **Kontrol Status Akun Real-Time**: Fitur tombol saklar (*Toggle Status*) untuk mengaktifkan atau menonaktifkan akses akun pegawai seketika jika terjadi mutasi atau pemutusan tugas.
+   - **Mitigasi Lockout Serangan Brute-Force**: Membuka blokir akun dan mereset penghitung kegagalan login (`failedLoginCount: 0`, `lockedUntil: null`).
+   - **One-Click Password Reset**: Kemudahan mereset kata sandi pegawai yang lupa kata sandi kembali ke standar aman rumah sakit secara instan.
+2. **Manajemen Master Lokasi Ruangan & Bangsal (`DepartmentUnit`)**:
+   - Pendaftaran dan pembaruan data seluruh unit rumah sakit (IGD, ICU, Kamar Operasi, Poliklinik, Bangsal Rawat Inap, Farmasi, Laboratorium, Radiologi, Kasir).
+   - Pemetaan zona gedung dan lantai gedung untuk pemanduan teknisi lapangan secara presisi.
+   - Pemantauan metrik keterkaitan: Jumlah staf aktif penempatan dan total riwayat tiket aduan per unit.
+3. **Manajemen Master Kategori Masalah & Target SLA Menit (`Category`)**:
+   - Pengaturan 5 pilar kategori masalah (*SIMRS & RME*, *Software Lainnya*, *Hardware & PC*, *Jaringan*, *Fasilitas Penunjang TI*).
+   - Penyesuaian target batas waktu respon SLA dalam menit secara dinamis langsung dari antarmuka web.
+4. **Pusat Jejak Forensik Siber & Log Audit (`SystemAuditLog`)**:
+   - Pencatatan otomatis tak terhapus (*Append-Only Audit Trail*) untuk seluruh aktivitas penting: `LOGIN`, `FAILED_LOGIN`, `CREATE_TICKET`, `SUPERADMIN_CREATE_USER`, `SUPERADMIN_RESET_PASSWORD`, `SUPERADMIN_ACTIVATE_USER`, dsb.
+   - Menyajikan informasi forensik lengkap: Stempel Waktu (Timestamp), Pelaku (User & Role), Event Aksi, IP Address penyerang/pengguna, User Agent, dan Payload JSON data.
+5. **Akses Meja Kendali Tiket Langsung (Omni-Channel Control)**:
+   - Superadmin memiliki tab langsung ke *IT Staff Unified Workbench* untuk memantau antrean rumah sakit, menentukan tingkat urgensi, maupun mengambil tindakan langsung dalam kondisi darurat tanpa harus berganti peran akun.
 
 ---
 
@@ -233,8 +306,7 @@ generator client {
 enum Role {
   SUPERADMIN
   MANAGEMENT
-  HELPDESK
-  TECHNICIAN
+  IT_STAFF
   STAFF_USER
 }
 

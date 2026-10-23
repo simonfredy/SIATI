@@ -17,7 +17,7 @@ export const loginSchema = z.object({
 export const createTicketSchema = z.object({
   unitId: z.number().int().positive(),
   categoryId: z.number().int().positive(),
-  urgency: z.enum(["EMERGENCY", "HIGH", "MEDIUM", "LOW"]),
+  urgency: z.enum(["EMERGENCY", "HIGH", "MEDIUM", "LOW"]).optional().default("MEDIUM"),
   description: z
     .string()
     .min(10, "Deskripsikan gejala kerusakan minimal 10 karakter")
@@ -29,13 +29,15 @@ export const createTicketSchema = z.object({
 export const updateTicketStatusSchema = z.object({
   ticketId: z.string().uuid("ID Tiket tidak valid"),
   newStatus: z.enum([
+    "SUBMITTED",
     "ASSIGNED",
     "IN_PROGRESS",
     "PENDING_PARTS",
     "RESOLVED",
     "CLOSED",
     "REJECTED",
-  ]),
+  ]).optional(),
+  urgency: z.enum(["EMERGENCY", "HIGH", "MEDIUM", "LOW"]).optional(),
   notes: z.string().max(1000, "Catatan maksimal 1000 karakter").optional(),
   assignedTechnicianId: z.string().uuid().optional(),
 });

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SIATI - Sistem Informasi Aduan & Ticketing IT RSUD",
-  description: "Layanan Pelaporan Aduan dan Ticketing IT Rumah Sakit Pemerintah Siaga 24/7",
+  title: "SIATI - Sistem Informasi Aduan & Ticketing TI RSBM",
+  description: "Layanan Pelaporan Aduan dan Ticketing TI Rumah Sakit Bhayangkara Medan",
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
@@ -38,8 +38,24 @@ export default function RootLayout({
     <html
       lang="id"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-slate-900 text-slate-800">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (localStorage.getItem('siati_theme') === 'dark') {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
+      </head>
+      <body className="min-h-full flex flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
         {children}
       </body>
     </html>
