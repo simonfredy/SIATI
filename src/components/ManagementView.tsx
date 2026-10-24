@@ -40,6 +40,7 @@ import {
   modalContentVariants,
   interactiveCardHover,
 } from "@/lib/motionVariants";
+import { HospitalProfileItem } from "@/actions/superadmin";
 
 export interface ManagementTicketItem {
   id: string;
@@ -122,6 +123,7 @@ interface ManagementViewProps {
   categories: ManagementCategoryItem[];
   technicians: ManagementTechnicianItem[];
   currentUserName: string;
+  hospitalProfile?: HospitalProfileItem | null;
 }
 
 // Helper: Format Date object to YYYY-MM-DD
@@ -178,6 +180,7 @@ export default function ManagementView({
   categories,
   technicians,
   currentUserName,
+  hospitalProfile,
 }: ManagementViewProps) {
   // Navigation Tabs
   const [activeTab, setActiveTab] = useState<
@@ -730,6 +733,17 @@ export default function ManagementView({
 
   // Fungsi Ekspor CSV (Menggunakan Data Tab 3 yang Sedang Difilter)
   const handleExportCSV = () => {
+    const hospitalHeaders = hospitalProfile
+      ? [
+          `"# REKAPITULASI LAPORAN LAYANAN TEKNOLOGI INFORMASI (SIATI)"`,
+          `"# Fasilitas Kesehatan: ${hospitalProfile.name || "Rumah Sakit"}"`,
+          `"# Kelas: ${hospitalProfile.hospitalClass || "-"} | Jenis: ${hospitalProfile.ownershipType || "-"} | Kode PPK BPJS: ${hospitalProfile.bpjsPpkCode || "-"} | Kode Kemenkes: ${hospitalProfile.kemenkesCode || "-"} | ID SatuSehat: ${hospitalProfile.satuSehatId || "-"}"`,
+          `"# Alamat: ${(hospitalProfile.address || "-").replace(/"/g, '""')} | Telp: ${hospitalProfile.phone || "-"} | Email: ${hospitalProfile.email || "-"}"`,
+          `"# Tanggal Cetak/Ekspor: ${new Date().toLocaleString("id-ID")} | Pengunduh: ${currentUserName}"`,
+          `""`,
+        ]
+      : [];
+
     const headers = [
       "No. Tiket",
       "Waktu Lapor",
@@ -778,15 +792,21 @@ export default function ManagementView({
       ].join(",");
     });
 
-    const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\n");
+    const csvContent =
+      "\uFEFF" +
+      (hospitalHeaders.length > 0 ? hospitalHeaders.join("\n") + "\n" : "") +
+      [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
     const timestamp = new Date().toISOString().slice(0, 10);
+    const hospitalSlug = (hospitalProfile?.name || "SIATI")
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]/g, "_");
     link.setAttribute(
       "download",
-      `SIATI_Laporan_Eksekutif_${timestamp}.csv`
+      `${hospitalSlug}_Laporan_Eksekutif_${timestamp}.csv`
     );
     document.body.appendChild(link);
     link.click();
@@ -796,6 +816,91 @@ export default function ManagementView({
   const handlePrintReport = () => {
     window.print();
   };
+
+  // ========================================================
+  // HELPER KOMPUTASI KHUSUS DOKUMEN CETAK LAPORAN RESMI (A4)
+  // ========================================================
+  const printCategoryStats = useMemo(() => {
+    return categories.map((cat, idx) => {
+      const catTickets = cardsTickets.filter((t) => t.category.id === cat.id);
+      const resolved = catTickets.filter(
+        (t) => t.status === "RESOLVED" || t.status === "CLOSED"
+      );
+      let compliant = 0;
+      resolved.forEach((t) => {
+        const target = cat.targetSlaMinutes || 30;
+        if (t.repairMinutes !== null && t.repairMinutes <= target) {
+          compliant++;
+        } else if (t.repairMinutes === null) {
+          compliant++;
+        }
+      });
+      const slaRate =
+        resolved.length > 0
+          ? Math.round((compliant / resolved.length) * 100)
+          : 100;
+      return {
+        no: idx + 1,
+        id: cat.id,
+        name: cat.name,
+        targetSla: cat.targetSlaMinutes || 30,
+        total: catTickets.length,
+        resolved: resolved.length,
+        compliant,
+        overdue: resolved.length - compliant,
+        slaRate,
+      };
+    });
+  }, [categories, cardsTickets]);
+
+  const printTopUnits = useMemo(() => {
+    return unitStats.slice(0, 8);
+  }, [unitStats]);
+
+  const printTicketsList = useMemo(() => {
+    return cardsTickets.slice(0, 30);
+  }, [cardsTickets]);
+
+  const printDateRangeText = useMemo(() => {
+    if (cardsStartDate && cardsEndDate) {
+      if (cardsStartDate === cardsEndDate) {
+        return `${new Date(cardsStartDate).toLocaleDateString("id-ID", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })}`;
+      }
+      return `${new Date(cardsStartDate).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })} s/d ${new Date(cardsEndDate).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })}`;
+    }
+    return `Seluruh Riwayat Operasional (${cardsTickets.length} Tiket)`;
+  }, [cardsStartDate, cardsEndDate, cardsTickets]);
+
+  const documentRegNumber = useMemo(() => {
+    const yr = new Date().getFullYear();
+    const mo = String(new Date().getMonth() + 1).padStart(2, "0");
+    const count = cardsTickets.length;
+    return `SIATI/LKP-TI/${yr}/${mo}/${String(count).padStart(3, "0")}`;
+  }, [cardsTickets]);
+
+  const hospitalCity = useMemo(() => {
+    if (hospitalProfile?.address) {
+      const parts = hospitalProfile.address.split(",");
+      if (parts.length >= 2) {
+        return parts[parts.length - 2].trim().replace(/^(Kota|Kab\.|Kabupaten)\s+/i, "");
+      }
+      return parts[parts.length - 1].trim();
+    }
+    return "Tempat";
+  }, [hospitalProfile]);
 
   // Reusable Date Range Picker Component
   const renderDateFilterBar = (
@@ -974,40 +1079,465 @@ export default function ManagementView({
 
   return (
     <div className="space-y-6">
-      {/* ======================================================== */}
-      {/* 1. KOP SURAT RESMI CETAK (HANYA MUNCUL DI CETAK/PDF) */}
-      {/* ======================================================== */}
-      <div className="hidden print:block print:mb-8 text-black border-b-2 border-black pb-4 text-center">
-        <div className="text-xs font-bold tracking-widest uppercase">
-          Pelayanan Kesehatan & Fasilitas Medis
+      {/* ========================================================================= */}
+      {/* DOKUMEN CETAK RESMI FORMAT LAPORAN RUMAH SAKIT (HANYA MUNCUL DI PRINT/PDF) */}
+      {/* ========================================================================= */}
+      <div className="hidden print:block bg-white text-black p-0 m-0 space-y-5 text-left font-sans">
+        {/* 1. KOP SURAT RESMI */}
+        <div className="border-b-2 border-black pb-3">
+          <div className="flex items-center justify-between gap-5 pb-2">
+            {hospitalProfile?.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={hospitalProfile.logoUrl}
+                alt={hospitalProfile.name}
+                className="w-20 h-20 object-contain shrink-0"
+              />
+            ) : (
+              <div className="w-16 h-16 border-2 border-black rounded-lg flex flex-col items-center justify-center font-bold text-[10px] uppercase text-center p-1 shrink-0">
+                <Building2 className="w-6 h-6 mb-1 text-black" />
+                <span>LOGO RS</span>
+              </div>
+            )}
+
+            <div className="flex-1 text-center">
+              <div className="text-xl font-black tracking-wider uppercase text-black">
+                {hospitalProfile?.name || "RUMAH SAKIT"}
+              </div>
+              <div className="text-[10px] font-normal mt-0.5 text-gray-700 leading-tight">
+                {hospitalProfile?.address || "Alamat Fasilitas Kesehatan"}
+              </div>
+              <div className="text-[9.5px] text-gray-600 flex items-center justify-center gap-3 flex-wrap mt-0.5">
+                {hospitalProfile?.phone && <span>Telp: {hospitalProfile.phone}</span>}
+                {hospitalProfile?.email && <span>Email: {hospitalProfile.email}</span>}
+                {hospitalProfile?.website && <span>Web: {hospitalProfile.website}</span>}
+              </div>
+            </div>
+
+            <div className="w-20 shrink-0" />
+          </div>
+
+          <div className="w-full h-0.5 bg-black mt-1"></div>
+          <div className="w-full h-[1px] bg-black mt-0.5"></div>
         </div>
-        <div className="text-base font-extrabold tracking-wider uppercase mt-1">
-          Instalasi Teknologi Informasi Rumah Sakit
+
+        {/* 2. JUDUL DOKUMEN & KOTAK ADMINISTRASI */}
+        <div className="space-y-3">
+          <div className="text-center space-y-0.5">
+            <h1 className="text-base font-extrabold uppercase tracking-wide text-black">
+              Laporan Eksekutif Rekapitulasi Pelayanan & Kepatuhan SLA Teknologi Informasi
+            </h1>
+            <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              Instalasi / Unit Teknologi Informasi & SIMRS
+            </p>
+          </div>
+
+          {/* Kotak Informasi Administrasi Laporan */}
+          <div className="border border-black rounded-lg p-2.5 text-[10px] bg-gray-50/50">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+              <div className="flex">
+                <span className="w-36 font-bold text-gray-800">Nomor Registrasi:</span>
+                <span className="font-mono font-bold">{documentRegNumber}</span>
+              </div>
+              <div className="flex">
+                <span className="w-36 font-bold text-gray-800">Tanggal & Waktu Cetak:</span>
+                <span>
+                  {new Date().toLocaleDateString("id-ID", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}{" "}
+                  pukul {new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} WIB
+                </span>
+              </div>
+              <div className="flex">
+                <span className="w-36 font-bold text-gray-800">Periode Evaluasi Data:</span>
+                <span className="font-semibold">{printDateRangeText}</span>
+              </div>
+              <div className="flex">
+                <span className="w-36 font-bold text-gray-800">Penanggung Jawab Laporan:</span>
+                <span className="font-bold">{currentUserName}</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="text-[11px] font-normal italic mt-0.5">
-          Sistem Informasi Aduan & Ticketing Terpadu TI • Laporan Eksekutif SIATI
+
+        {/* 3. BAGIAN I: INDIKATOR KINERJA UTAMA (KPI SCORECARD) */}
+        <div className="space-y-2 print-avoid-break">
+          <div className="flex items-center gap-1.5 border-b border-black pb-1">
+            <span className="text-xs font-extrabold uppercase tracking-wider">
+              I. Ringkasan Eksekutif Indikator Kinerja Kunci (KPI SLA)
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+            <div className="border border-black rounded-md p-2 bg-gray-50/80">
+              <span className="text-[9.5px] font-bold text-gray-700 uppercase block">Total Tiket Masuk</span>
+              <span className="text-lg font-black block mt-0.5">{kpis.total}</span>
+              <span className="text-[9px] text-gray-600 block">
+                {kpis.resolvedCount} Selesai • {kpis.inProgressCount} Dalam Proses
+              </span>
+            </div>
+
+            <div className="border border-black rounded-md p-2 bg-gray-50/80">
+              <span className="text-[9.5px] font-bold text-gray-700 uppercase block">Kepatuhan Target SLA</span>
+              <span className="text-lg font-black block mt-0.5">{kpis.slaComplianceRate}%</span>
+              <span className="text-[9px] text-gray-600 block">
+                {kpis.slaComplianceRate >= 85 ? "Standar Pelayanan Terpenuhi" : "Perlu Evaluasi Kecepatan"}
+              </span>
+            </div>
+
+            <div className="border border-black rounded-md p-2 bg-gray-50/80">
+              <span className="text-[9.5px] font-bold text-gray-700 uppercase block">Rata-Rata Respon (MTTA)</span>
+              <span className="text-lg font-black block mt-0.5">{kpis.mtta} <span className="text-xs font-semibold">Menit</span></span>
+              <span className="text-[9px] text-gray-600 block">Waktu Tanggap Pertama Staf TI</span>
+            </div>
+
+            <div className="border border-black rounded-md p-2 bg-gray-50/80">
+              <span className="text-[9.5px] font-bold text-gray-700 uppercase block">Rata-Rata Perbaikan (MTTR)</span>
+              <span className="text-lg font-black block mt-0.5">{kpis.mttr} <span className="text-xs font-semibold">Menit</span></span>
+              <span className="text-[9px] text-gray-600 block">Durasi Pengerjaan Fisik di Lokasi</span>
+            </div>
+
+            <div className="border border-black rounded-md p-2 bg-gray-50/80">
+              <span className="text-[9.5px] font-bold text-gray-700 uppercase block">Kepuasan Pengguna (CSAT)</span>
+              <span className="text-lg font-black block mt-0.5">{kpis.csat} <span className="text-xs font-semibold">/ 5.0 ⭐</span></span>
+              <span className="text-[9px] text-gray-600 block">{kpis.ratedCount} Nakes Memberikan Nilai</span>
+            </div>
+
+            <div className="border border-black rounded-md p-2 bg-gray-50/80">
+              <span className="text-[9.5px] font-bold text-gray-700 uppercase block">Insiden Darurat Kritis (P1)</span>
+              <span className="text-lg font-black block mt-0.5">{kpis.emergencyP1Count}</span>
+              <span className="text-[9px] text-gray-600 block">IGD, Kamar Operasi (OK), ICU</span>
+            </div>
+          </div>
         </div>
-        <div className="w-full h-0.5 bg-black mt-2"></div>
-        <div className="text-sm font-bold uppercase mt-3">
-          Rekapitulasi Kinerja Pelayanan & Tingkat Kepatuhan SLA Teknologi
-          Informasi
+
+        {/* 4. BAGIAN II: REKAPITULASI BERDASARKAN KATEGORI MASALAH */}
+        <div className="space-y-2 print-avoid-break">
+          <div className="flex items-center gap-1.5 border-b border-black pb-1">
+            <span className="text-xs font-extrabold uppercase tracking-wider">
+              II. Rekapitulasi Pelayanan Berdasarkan Kategori Masalah
+            </span>
+          </div>
+
+          <table className="w-full border-collapse border border-black text-[9.5px] text-left">
+            <thead>
+              <tr className="bg-gray-100 font-bold border-b border-black text-center">
+                <th className="border border-black p-1.5 w-8">No</th>
+                <th className="border border-black p-1.5 text-left">Kategori Layanan TI</th>
+                <th className="border border-black p-1.5 w-24">Target SLA Baku</th>
+                <th className="border border-black p-1.5 w-20">Total Aduan</th>
+                <th className="border border-black p-1.5 w-24">Selesai Tepat Waktu</th>
+                <th className="border border-black p-1.5 w-24">Melampaui SLA</th>
+                <th className="border border-black p-1.5 w-24">% Kepatuhan</th>
+                <th className="border border-black p-1.5 w-28">Status Mutu</th>
+              </tr>
+            </thead>
+            <tbody>
+              {printCategoryStats.map((item) => (
+                <tr key={item.id} className="border-b border-gray-300">
+                  <td className="border border-black p-1.5 text-center">{item.no}</td>
+                  <td className="border border-black p-1.5 font-bold text-left">{item.name}</td>
+                  <td className="border border-black p-1.5 text-center">{item.targetSla} Menit</td>
+                  <td className="border border-black p-1.5 text-center font-bold">{item.total}</td>
+                  <td className="border border-black p-1.5 text-center">{item.compliant}</td>
+                  <td className="border border-black p-1.5 text-center">{item.overdue}</td>
+                  <td className="border border-black p-1.5 text-center font-bold">
+                    {item.slaRate}%
+                  </td>
+                  <td className="border border-black p-1.5 text-center font-semibold">
+                    {item.slaRate >= 85 ? "Sesuai Standar" : "Perlu Peningkatan"}
+                  </td>
+                </tr>
+              ))}
+              <tr className="bg-gray-100 font-bold border-t border-black text-center">
+                <td colSpan={3} className="border border-black p-1.5 text-right uppercase">
+                  Total Seluruh Kategori
+                </td>
+                <td className="border border-black p-1.5">{kpis.total}</td>
+                <td className="border border-black p-1.5">
+                  {printCategoryStats.reduce((acc, c) => acc + c.compliant, 0)}
+                </td>
+                <td className="border border-black p-1.5">
+                  {printCategoryStats.reduce((acc, c) => acc + c.overdue, 0)}
+                </td>
+                <td className="border border-black p-1.5">{kpis.slaComplianceRate}%</td>
+                <td className="border border-black p-1.5">
+                  {kpis.slaComplianceRate >= 85 ? "Terkendali Baik" : "Evaluasi"}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <div className="text-xs text-gray-700">
-          Tanggal Cetak:{" "}
-          {new Date().toLocaleDateString("id-ID", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}{" "}
-          • Pemeriksa: {currentUserName}
+
+        {/* 5. BAGIAN III: DISTRIBUSI UNIT KERJA DENGAN FREKUENSI ADUAN TERTINGGI */}
+        <div className="space-y-2 print-avoid-break">
+          <div className="flex items-center gap-1.5 border-b border-black pb-1">
+            <span className="text-xs font-extrabold uppercase tracking-wider">
+              III. Distribusi Ruangan / Unit Kerja dengan Frekuensi Gangguan Tertinggi
+            </span>
+          </div>
+
+          <table className="w-full border-collapse border border-black text-[9.5px] text-left">
+            <thead>
+              <tr className="bg-gray-100 font-bold border-b border-black text-center">
+                <th className="border border-black p-1.5 w-8">No</th>
+                <th className="border border-black p-1.5 text-left">Ruangan / Unit Medis</th>
+                <th className="border border-black p-1.5 text-left">Zona Gedung</th>
+                <th className="border border-black p-1.5 w-24">Total Aduan</th>
+                <th className="border border-black p-1.5 w-24">Insiden Darurat (P1)</th>
+                <th className="border border-black p-1.5 w-24">Tiket Selesai</th>
+                <th className="border border-black p-1.5 w-24">Tingkat Resolusi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {printTopUnits.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="border border-black p-2 text-center text-gray-500">
+                    Tidak ada data tiket aduan pada unit kerja.
+                  </td>
+                </tr>
+              ) : (
+                printTopUnits.map((u, i) => {
+                  const resRate = u.total > 0 ? Math.round((u.resolved / u.total) * 100) : 100;
+                  return (
+                    <tr key={u.name} className="border-b border-gray-300">
+                      <td className="border border-black p-1.5 text-center">{i + 1}</td>
+                      <td className="border border-black p-1.5 font-bold text-left">{u.name}</td>
+                      <td className="border border-black p-1.5 text-left text-gray-700">{u.buildingZone}</td>
+                      <td className="border border-black p-1.5 text-center font-bold">{u.total}</td>
+                      <td className="border border-black p-1.5 text-center font-bold text-rose-700">
+                        {u.emergency}
+                      </td>
+                      <td className="border border-black p-1.5 text-center">{u.resolved}</td>
+                      <td className="border border-black p-1.5 text-center font-semibold">
+                        {resRate}%
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+          <p className="text-[8.5px] text-gray-600 italic">
+            * Menampilkan unit kerja dengan tingkat insiden fasilitas tertinggi sebagai bahan acuan perencanaan peremajaan perangkat keras (hardware) dan pemeliharaan rutin jaringan.
+          </p>
+        </div>
+
+        {/* 6. BAGIAN IV: LEMBAR AUDIT RINCIAN TIKET PELAYANAN TI */}
+        <div className="space-y-2 print-avoid-break">
+          <div className="flex items-center gap-1.5 border-b border-black pb-1">
+            <span className="text-xs font-extrabold uppercase tracking-wider">
+              IV. Lembar Rincian Tiket Aduan Pelayanan TI (Audit Sample)
+            </span>
+          </div>
+
+          <table className="w-full border-collapse border border-black text-[9px] text-left">
+            <thead>
+              <tr className="bg-gray-100 font-bold border-b border-black text-center">
+                <th className="border border-black p-1 w-7">No</th>
+                <th className="border border-black p-1 w-20 font-mono">No. Tiket</th>
+                <th className="border border-black p-1 w-24">Waktu Lapor</th>
+                <th className="border border-black p-1 text-left">Unit Ruangan</th>
+                <th className="border border-black p-1 text-left">Kategori</th>
+                <th className="border border-black p-1 w-16">Urgensi</th>
+                <th className="border border-black p-1 text-left">Teknisi</th>
+                <th className="border border-black p-1 w-14">Respon</th>
+                <th className="border border-black p-1 w-14">Kerja</th>
+                <th className="border border-black p-1 w-14">Target</th>
+                <th className="border border-black p-1 w-20">Kepatuhan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {printTicketsList.length === 0 ? (
+                <tr>
+                  <td colSpan={11} className="border border-black p-2 text-center text-gray-500">
+                    Tidak ada tiket aduan pada rentang waktu yang dipilih.
+                  </td>
+                </tr>
+              ) : (
+                printTicketsList.map((t, idx) => {
+                  const targetSla = t.category.targetSlaMinutes || 30;
+                  const isCompliant =
+                    t.status === "RESOLVED" || t.status === "CLOSED"
+                      ? t.repairMinutes !== null ? t.repairMinutes <= targetSla : true
+                      : null;
+
+                  return (
+                    <tr key={t.id} className="border-b border-gray-300">
+                      <td className="border border-black p-1 text-center">{idx + 1}</td>
+                      <td className="border border-black p-1 font-mono font-bold text-center">{t.ticketNumber}</td>
+                      <td className="border border-black p-1 text-center text-[8.5px]">
+                        {new Date(t.submittedAt).toLocaleDateString("id-ID", {
+                          day: "2-digit",
+                          month: "2-digit",
+                        })}{" "}
+                        {new Date(t.submittedAt).toLocaleTimeString("id-ID", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </td>
+                      <td className="border border-black p-1 font-semibold text-left truncate max-w-[110px]">
+                        {t.unit.name}
+                      </td>
+                      <td className="border border-black p-1 text-left truncate max-w-[90px]">
+                        {t.category.name}
+                      </td>
+                      <td className="border border-black p-1 text-center font-bold">
+                        {t.urgency}
+                      </td>
+                      <td className="border border-black p-1 text-left truncate max-w-[90px]">
+                        {t.assignedTechnician?.fullName || "Belum Ditugaskan"}
+                      </td>
+                      <td className="border border-black p-1 text-center">
+                        {t.responseMinutes !== null ? `${t.responseMinutes}m` : "-"}
+                      </td>
+                      <td className="border border-black p-1 text-center">
+                        {t.repairMinutes !== null ? `${t.repairMinutes}m` : "-"}
+                      </td>
+                      <td className="border border-black p-1 text-center font-medium">
+                        {targetSla}m
+                      </td>
+                      <td className="border border-black p-1 text-center font-bold">
+                        {isCompliant === null ? (
+                          <span className="text-gray-600">Proses</span>
+                        ) : isCompliant ? (
+                          <span className="text-emerald-700">Sesuai SLA</span>
+                        ) : (
+                          <span className="text-rose-700">Melebihi</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+          <p className="text-[8.5px] text-gray-600 italic">
+            * Menampilkan {printTicketsList.length} tiket operasional terkini. Seluruh riwayat tiket tersimpan secara utuh dalam log audit sistem SIATI.
+          </p>
+        </div>
+
+        {/* 7. BAGIAN V: CATATAN & DEFINISI SINGKATAN TEKNIS OPERASIONAL RUMAH SAKIT */}
+        <div className="space-y-2 print-avoid-break">
+          <div className="flex items-center gap-1.5 border-b border-black pb-1">
+            <span className="text-xs font-extrabold uppercase tracking-wider">
+              V. Catatan Glosarium & Definisi Singkatan Operasional TI
+            </span>
+          </div>
+
+          <div className="border border-black rounded-lg p-3 bg-gray-50/70 text-[9px] leading-relaxed">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+              <div>
+                <strong className="text-black">1. SLA (Service Level Agreement):</strong>
+                <p className="text-gray-700">
+                  Standar batas waktu baku penyelesaian gangguan TI yang disepakati untuk menjamin kelancaran operasional pelayanan medis pasien di seluruh instalasi rumah sakit.
+                </p>
+              </div>
+
+              <div>
+                <strong className="text-black">2. MTTA (Mean Time to Acknowledge):</strong>
+                <p className="text-gray-700">
+                  Rata-rata kecepatan waktu tanggap staf TI dari saat tiket dibuat oleh tenaga medis hingga tiket diambil dan ditindaklanjuti oleh teknisi penanggung jawab.
+                </p>
+              </div>
+
+              <div>
+                <strong className="text-black">3. MTTR (Mean Time to Repair):</strong>
+                <p className="text-gray-700">
+                  Rata-rata durasi pengerjaan perbaikan fisik di lokasi ruangan hingga masalah operasional selesai tuntas (tidak termasuk durasi tunggu suku cadang / pending part).
+                </p>
+              </div>
+
+              <div>
+                <strong className="text-black">4. SIMRS (Sistem Informasi Manajemen Rumah Sakit):</strong>
+                <p className="text-gray-700">
+                  Sistem aplikasi komputerisasi terintegrasi untuk registrasi pasien, rawat inap, rawat jalan, resep elektronik, billing kasir, dan pelaporan medis rumah sakit.
+                </p>
+              </div>
+
+              <div>
+                <strong className="text-black">5. RME (Rekam Medis Elektronik):</strong>
+                <p className="text-gray-700">
+                  Pencatatan riwayat klinis pasien digital terpadu sesuai standar Peraturan Menteri Kesehatan RI (Permenkes) No. 24 Tahun 2022.
+                </p>
+              </div>
+
+              <div>
+                <strong className="text-black">6. BPJS PPK (Pemberi Pelayanan Kesehatan BPJS):</strong>
+                <p className="text-gray-700">
+                  Kode identitas fasilitas kesehatan resmi yang terdaftar dan terhubung secara sistem (*bridging*) dengan BPJS Kesehatan (V-Claim / Antrean Faskes).
+                </p>
+              </div>
+
+              <div>
+                <strong className="text-black">7. SATUSEHAT:</strong>
+                <p className="text-gray-700">
+                  Platform interoperabilitas dan integrasi data kesehatan nasional yang dikelola oleh Kementerian Kesehatan Republik Indonesia.
+                </p>
+              </div>
+
+              <div>
+                <strong className="text-black">8. CSAT (Customer Satisfaction Score):</strong>
+                <p className="text-gray-700">
+                  Indeks rata-rata kepuasan tenaga medis dan pelapor ruangan terhadap keramahan, ketepatan, dan hasil kerja tim TI (skala penilaian 1 hingga 5 bintang).
+                </p>
+              </div>
+
+              <div>
+                <strong className="text-black">9. P1 - EMERGENCY (Prioritas Darurat Kritis):</strong>
+                <p className="text-gray-700">
+                  Klasifikasi gangguan sangat mendesak yang mengancam keselamatan jiwa pasien atau melumpuhkan unit vital rumah sakit (IGD, Kamar Operasi/OK, ICU, Farmasi Darurat).
+                </p>
+              </div>
+
+              <div>
+                <strong className="text-black">10. SKP (Sasaran Kinerja Pegawai):</strong>
+                <p className="text-gray-700">
+                  Tolok ukur pencapaian dan evaluasi produktivitas kerja objektif bagi staf pelaksana dan tenaga fungsional rumah sakit.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 8. BAGIAN VI: LEMBAR PENGESAHAN (HALAMAN AKHIR) */}
+        <div className="print-avoid-break pt-6 mt-4 border-t border-black space-y-4">
+          <div className="flex justify-end text-xs">
+            <div className="text-right space-y-1 min-w-[200px]">
+              <div className="font-medium text-gray-800">
+                {hospitalCity},{" "}
+                {new Date().toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </div>
+              <div className="font-bold text-gray-800 pt-2">
+                Tertanda
+              </div>
+              <div className="font-extrabold text-sm uppercase tracking-wider text-black">
+                STAFF IT
+              </div>
+            </div>
+          </div>
+
+          {/* Catatan Kaki Dokumen Hukum */}
+          <div className="pt-3 border-t border-gray-300 text-[8.5px] text-gray-500 text-center leading-normal">
+            Dokumen Laporan Kinerja SLA ini diterbitkan secara otomatis dan sah melalui sistem <strong>SIATI</strong> (Sistem Informasi Aduan & Ticketing Terpadu TI).
+            Seluruh catatan waktu penanganan insiden, MTTA, dan MTTR tersimpan dalam basis data audit digital yang aman, objektif, dan dapat dipertanggungjawabkan.
+          </div>
         </div>
       </div>
 
-      {/* ======================================================== */}
-      {/* 2. TATA LETAK UTAMA DASHBOARD DENGAN EXPANDABLE SIDEBAR */}
-      {/* ======================================================== */}
-      <div className="flex flex-col md:flex-row items-start gap-4 lg:gap-6">
+      {/* ========================================================================= */}
+      {/* TAMPILAN INTERAKTIF WEB DASHBOARD PORTAL MANAJEMEN (DISEMBUNYIKAN SAAT PRINT) */}
+      {/* ========================================================================= */}
+      <div className="print:hidden space-y-6">
+        {/* TATA LETAK UTAMA DASHBOARD DENGAN EXPANDABLE SIDEBAR */}
+        <div className="flex flex-col md:flex-row items-start gap-4 lg:gap-6">
         {/* ======================================================== */}
         {/* SIDEBAR NAVIGASI (TABLET & LAPTOP/PC) EXPANDABLE/COLLAPSIBLE */}
         {/* ======================================================== */}
@@ -2585,6 +3115,7 @@ export default function ManagementView({
         </motion.div>
       )}
     </AnimatePresence>
+      </div>
     </div>
   );
 }

@@ -45,6 +45,7 @@ model User {
   nip              String?         @db.VarChar(50)
   fullName         String          @db.VarChar(150)
   phoneNumber      String          @db.VarChar(20)
+  avatarUrl        String?         @db.Text
   telegramChatId   String?         @db.VarChar(50)
   role             Role            @default(STAFF_USER)
   passwordHash     String          @db.VarChar(255)
@@ -198,3 +199,22 @@ model CaptchaChallenge {
   @@index([expiresAt])
   @@map("captcha_challenges")
 }
+
+model HospitalProfile {
+  id            Int      @id @default(1)
+  name          String   @default("Rumah Sakit Umum Daerah") @db.VarChar(150)
+  hospitalClass String   @default("Kelas B") @db.VarChar(50)
+  ownershipType String   @default("Pemerintah") @db.VarChar(50)
+  phone         String   @default("(021) 1234567") @db.VarChar(50)
+  email         String   @default("kontak@rumahsakit.co.id") @db.VarChar(100)
+  bpjsPpkCode   String?  @db.VarChar(50)
+  kemenkesCode  String?  @db.VarChar(50)
+  satuSehatId   String?  @db.VarChar(100)
+  address       String   @db.Text
+  logoUrl       String?  @db.VarChar(500)
+  website       String?  @db.VarChar(150)
+  updatedAt     DateTime @updatedAt
+
+  @@map("hospital_profile")
+}
+

@@ -34,6 +34,16 @@ import {
   Check,
   ChevronDown,
   X,
+  Upload,
+  Globe,
+  Phone,
+  Mail,
+  FileCheck,
+  Eye,
+  Sparkles,
+  Landmark,
+  Loader2,
+  Camera,
 } from "lucide-react";
 import {
   createUserAction,
@@ -42,6 +52,8 @@ import {
   createDepartmentUnitAction,
   createCategoryAction,
   updateCategorySlaAction,
+  updateHospitalProfileAction,
+  HospitalProfileItem,
 } from "@/actions/superadmin";
 import { updateTicketStatusAction } from "@/actions/tickets";
 import MediaViewerModal, { MediaAttachmentItem } from "@/components/MediaViewerModal";
@@ -63,6 +75,7 @@ export interface SuperadminUserItem {
   fullName: string;
   nip: string | null;
   phoneNumber: string;
+  avatarUrl?: string | null;
   role: Role;
   isActive: boolean;
   departmentUnitId: number;
@@ -107,6 +120,7 @@ interface SuperadminViewProps {
   currentUserId: string;
   currentUserName: string;
   currentUserRole: Role;
+  hospitalProfile?: HospitalProfileItem | null;
 }
 
 export default function SuperadminView({
@@ -119,9 +133,10 @@ export default function SuperadminView({
   currentUserId,
   currentUserName,
   currentUserRole,
+  hospitalProfile,
 }: SuperadminViewProps) {
   const [activeTab, setActiveTab] = useState<
-    "USERS" | "UNITS" | "CATEGORIES" | "AUDIT_LOGS" | "TICKETS"
+    "USERS" | "UNITS" | "CATEGORIES" | "AUDIT_LOGS" | "TICKETS" | "HOSPITAL_PROFILE"
   >("USERS");
 
   // Expand-Collapse State untuk Sidebar Tablet & Laptop / PC
@@ -155,6 +170,24 @@ export default function SuperadminView({
     null
   );
 
+  // State lokal pengguna untuk pembaruan instan (optimistic UI) tanpa reload halaman
+  const [localUsers, setLocalUsers] = useState<SuperadminUserItem[]>(users);
+  const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLocalUsers(users);
+  }, [users]);
+
+  // Auto-dismiss feedback message setelah 5 detik
+  useEffect(() => {
+    if (feedbackMsg) {
+      const timer = setTimeout(() => {
+        setFeedbackMsg(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [feedbackMsg]);
+
   // Filter User
   const [userSearch, setUserSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
@@ -163,6 +196,12 @@ export default function SuperadminView({
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isAddUnitOpen, setIsAddUnitOpen] = useState(false);
   const [isAddCatOpen, setIsAddCatOpen] = useState(false);
+
+  // State Unggah Foto Profil Pengguna Baru
+  const [newUserAvatarUrl, setNewUserAvatarUrl] = useState<string>("");
+  const [isUploadingUserAvatar, setIsUploadingUserAvatar] = useState<boolean>(false);
+  const [userAvatarError, setUserAvatarError] = useState<string | null>(null);
+  const [newFullNamePreview, setNewFullNamePreview] = useState<string>("");
 
   // Edit SLA Category
   const [editingCatId, setEditingCatId] = useState<number | null>(null);
@@ -176,10 +215,121 @@ export default function SuperadminView({
   const [localTickets, setLocalTickets] = useState<TicketItem[]>(tickets);
   const [ticketSearch, setTicketSearch] = useState<string>("");
   const [ticketStatusFilter, setTicketStatusFilter] = useState<
-    "UNRESOLVED" | "SUBMITTED" | "ASSIGNED" | "IN_PROGRESS" | "PENDING_PARTS" | "ALL"
+    "UNRESOLVED" | "SUBMITTED" | "ASSIGNED" | "IN_PROGRESS" | "PENDING_PARTS" | "RESOLVED" | "ALL"
   >("UNRESOLVED");
   const [ticketUrgencyFilter, setTicketUrgencyFilter] = useState<string>("ALL");
   const [activeMedia, setActiveMedia] = useState<MediaAttachmentItem | null>(null);
+
+  // State untuk Tab 6: Profil Rumah Sakit & Identitas Instansi
+  const [hpForm, setHpForm] = useState({
+    name: hospitalProfile?.name || "Rumah Sakit Umum Daerah",
+    hospitalClass: hospitalProfile?.hospitalClass || "Kelas B",
+    ownershipType: hospitalProfile?.ownershipType || "Pemerintah",
+    phone: hospitalProfile?.phone || "",
+    email: hospitalProfile?.email || "",
+    bpjsPpkCode: hospitalProfile?.bpjsPpkCode || "",
+    kemenkesCode: hospitalProfile?.kemenkesCode || "",
+    satuSehatId: hospitalProfile?.satuSehatId || "",
+    address: hospitalProfile?.address || "",
+    logoUrl: hospitalProfile?.logoUrl || "",
+    website: hospitalProfile?.website || "",
+  });
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [hpSavedMsg, setHpSavedMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    if (hospitalProfile) {
+      setHpForm({
+        name: hospitalProfile.name || "",
+        hospitalClass: hospitalProfile.hospitalClass || "Kelas B",
+        ownershipType: hospitalProfile.ownershipType || "Pemerintah",
+        phone: hospitalProfile.phone || "",
+        email: hospitalProfile.email || "",
+        bpjsPpkCode: hospitalProfile.bpjsPpkCode || "",
+        kemenkesCode: hospitalProfile.kemenkesCode || "",
+        satuSehatId: hospitalProfile.satuSehatId || "",
+        address: hospitalProfile.address || "",
+        logoUrl: hospitalProfile.logoUrl || "",
+        website: hospitalProfile.website || "",
+      });
+    }
+  }, [hospitalProfile]);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Hanya file gambar (PNG, JPG, JPEG, SVG, WebP) yang diizinkan untuk logo.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError("Ukuran logo maksimal 5 MB.");
+      return;
+    }
+
+    setUploadError(null);
+    setIsUploadingLogo(true);
+
+    try {
+      const data = new FormData();
+      data.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: data,
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success && json.attachment?.previewUrl) {
+        setHpForm((prev) => ({ ...prev, logoUrl: json.attachment.previewUrl }));
+      } else {
+        setUploadError(json.error || "Gagal mengunggah logo rumah sakit.");
+      }
+    } catch (err) {
+      console.error(err);
+      setUploadError("Terjadi kegagalan jaringan saat mengunggah logo.");
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  // Handler Unggah Foto Profil Pengguna Baru
+  const handleUserAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setUserAvatarError("Ukuran berkas foto maksimal 5 MB.");
+      return;
+    }
+
+    setIsUploadingUserAvatar(true);
+    setUserAvatarError(null);
+
+    try {
+      const data = new FormData();
+      data.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: data,
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success && json.attachment?.previewUrl) {
+        setNewUserAvatarUrl(json.attachment.previewUrl);
+      } else {
+        setUserAvatarError(json.error || "Gagal mengunggah foto profil.");
+      }
+    } catch {
+      setUserAvatarError("Terjadi kegagalan jaringan saat mengunggah foto.");
+    } finally {
+      setIsUploadingUserAvatar(false);
+    }
+  };
 
   useEffect(() => {
     setLocalTickets(tickets);
@@ -194,6 +344,9 @@ export default function SuperadminView({
     (t) => t.status === TicketStatus.IN_PROGRESS || t.status === TicketStatus.ASSIGNED
   );
   const pendingPartsTickets = localTickets.filter((t) => t.status === TicketStatus.PENDING_PARTS);
+  const resolvedTickets = localTickets.filter(
+    (t) => t.status === TicketStatus.RESOLVED || t.status === TicketStatus.CLOSED
+  );
   const emergencyTickets = localTickets.filter(
     (t) =>
       t.urgency === TicketUrgency.EMERGENCY &&
@@ -205,6 +358,10 @@ export default function SuperadminView({
   const filteredTickets = localTickets.filter((t) => {
     if (ticketStatusFilter === "UNRESOLVED") {
       if (t.status === TicketStatus.RESOLVED || t.status === TicketStatus.CLOSED) {
+        return false;
+      }
+    } else if (ticketStatusFilter === "RESOLVED") {
+      if (t.status !== TicketStatus.RESOLVED && t.status !== TicketStatus.CLOSED) {
         return false;
       }
     } else if (ticketStatusFilter !== "ALL") {
@@ -235,6 +392,7 @@ export default function SuperadminView({
   });
 
   const handleAdminUpdateUrgency = async (ticketId: string, newUrgency: TicketUrgency) => {
+    // Optimistic update lokal langsung tanpa notifikasi berlebihan
     setLocalTickets((prev) =>
       prev.map((t) => (t.id === ticketId ? { ...t, urgency: newUrgency } : t))
     );
@@ -243,27 +401,17 @@ export default function SuperadminView({
       const res = await updateTicketStatusAction({
         ticketId,
         urgency: newUrgency,
+        silent: true, // Tidak memicu notifikasi popup/audio ke seluruh sistem
       });
 
       if (res.success) {
-        setFeedbackMsg({
-          type: "success",
-          text: `Tingkat Urgensi tiket berhasil diubah menjadi ${newUrgency}.`,
-        });
+        // Notifikasi sengaja tidak ditampilkan agar penyesuaian urgensi oleh super admin tidak memicu kecurigaan atau kebisingan sistem
         router.refresh();
       } else {
         setLocalTickets(tickets);
-        setFeedbackMsg({
-          type: "error",
-          text: res.message || "Gagal mengubah tingkat urgensi tiket.",
-        });
       }
     } catch {
       setLocalTickets(tickets);
-      setFeedbackMsg({
-        type: "error",
-        text: "Terjadi kesalahan server saat memperbarui tingkat urgensi tiket.",
-      });
     }
   };
 
@@ -366,7 +514,7 @@ export default function SuperadminView({
     }
   };
 
-  const filteredUsers = users.filter((u) => {
+  const filteredUsers = localUsers.filter((u) => {
     const matchSearch =
       u.username.toLowerCase().includes(userSearch.toLowerCase()) ||
       u.fullName.toLowerCase().includes(userSearch.toLowerCase()) ||
@@ -393,16 +541,42 @@ export default function SuperadminView({
     }
   };
 
+  // Helper Pembuat Inisial Nama untuk Avatar Placeholder
+  const getInitials = (name: string) => {
+    if (!name) return "P";
+    const clean = name.replace(/^(dr\.|drg\.|prof\.|ns\.|apt\.|ir\.)\s*/i, "").trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "P";
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  };
+
   // Actions
   const handleToggleUserStatus = (userId: string) => {
     setFeedbackMsg(null);
+    setTogglingUserId(userId);
+
+    // Optimistic UI: langsung perbarui status di state lokal seketika tanpa refresh/reload halaman
+    setLocalUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, isActive: !u.isActive } : u))
+    );
+
     startTransition(async () => {
-      const res = await toggleUserStatusAction(userId);
-      if (res.success) {
-        setFeedbackMsg({ type: "success", text: res.message || "Status berhasil diperbarui." });
-        window.location.reload();
-      } else {
-        setFeedbackMsg({ type: "error", text: res.message || "Gagal mengubah status pengguna." });
+      try {
+        const res = await toggleUserStatusAction(userId);
+        if (res.success) {
+          setFeedbackMsg({ type: "success", text: res.message || "Status pengguna berhasil diperbarui." });
+          router.refresh(); // Sinkronisasi server di latar belakang tanpa reload halaman
+        } else {
+          // Rollback ke data asli jika server gagal
+          setLocalUsers(users);
+          setFeedbackMsg({ type: "error", text: res.message || "Gagal mengubah status pengguna." });
+        }
+      } catch {
+        setLocalUsers(users);
+        setFeedbackMsg({ type: "error", text: "Terjadi gangguan jaringan saat memperbarui status akun." });
+      } finally {
+        setTogglingUserId(null);
       }
     });
   };
@@ -416,6 +590,7 @@ export default function SuperadminView({
       const res = await resetUserPasswordAction(userId);
       if (res.success) {
         setFeedbackMsg({ type: "success", text: res.message || "Password berhasil di-reset." });
+        router.refresh();
       } else {
         setFeedbackMsg({ type: "error", text: res.message || "Gagal me-reset password." });
       }
@@ -429,7 +604,7 @@ export default function SuperadminView({
       if (res.success) {
         setEditingCatId(null);
         setFeedbackMsg({ type: "success", text: res.message || "Target SLA berhasil diperbarui." });
-        window.location.reload();
+        router.refresh();
       } else {
         setFeedbackMsg({ type: "error", text: res.message || "Gagal memperbarui target SLA." });
       }
@@ -501,7 +676,7 @@ export default function SuperadminView({
                 onClick={() => setActiveTab("USERS")}
                 title={
                   isSidebarCollapsed
-                    ? `Pengguna Pegawai (${users.length} Pegawai)`
+                    ? `Pengguna Pegawai (${localUsers.length} Pegawai)`
                     : undefined
                 }
                 className={`w-full rounded-xl transition-all flex items-center group ${
@@ -544,7 +719,7 @@ export default function SuperadminView({
                         : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
                     }`}
                   >
-                    {users.length}
+                    {localUsers.length}
                   </span>
                 )}
               </button>
@@ -767,6 +942,57 @@ export default function SuperadminView({
                 )}
               </button>
 
+              {/* Menu 6: PROFIL RUMAH SAKIT */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("HOSPITAL_PROFILE")}
+                title={
+                  isSidebarCollapsed
+                    ? "Profil Rumah Sakit & Identitas Instansi"
+                    : undefined
+                }
+                className={`w-full rounded-xl transition-all flex items-center group ${
+                  isSidebarCollapsed
+                    ? "justify-center p-2.5"
+                    : "justify-between p-2.5"
+                } ${
+                  activeTab === "HOSPITAL_PROFILE"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 font-bold shadow-sm"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                      activeTab === "HOSPITAL_PROFILE"
+                        ? "bg-emerald-600 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400"
+                    }`}
+                  >
+                    <Building2 className="w-4 h-4" />
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <div className="min-w-0 text-left">
+                      <div className="text-xs truncate">Profil Rumah Sakit</div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        Identitas & Kop Surat
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                      activeTab === "HOSPITAL_PROFILE"
+                        ? "bg-emerald-200/80 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
+                    Instansi
+                  </span>
+                )}
+              </button>
+
               {/* Menu 6: PORTAL MANAJEMEN */}
               <div className="pt-2 mt-2 border-t border-slate-100 dark:border-white/10">
                 <a
@@ -824,7 +1050,7 @@ export default function SuperadminView({
           </div>
 
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => router.refresh()}
             className="self-start sm:self-auto px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-bold flex items-center gap-2 backdrop-blur-md transition-all active:scale-95 shadow-sm"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Segarkan Data
@@ -834,18 +1060,28 @@ export default function SuperadminView({
 
       {feedbackMsg && (
         <div
-          className={`p-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2.5 shadow-sm transition-all ${
+          className={`p-4 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between gap-2.5 shadow-sm transition-all ${
             feedbackMsg.type === "success"
               ? "bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/40 text-emerald-800 dark:text-emerald-300"
               : "bg-rose-50 dark:bg-rose-500/20 border border-rose-200 dark:border-rose-500/40 text-rose-800 dark:text-rose-300"
           }`}
         >
-          {feedbackMsg.type === "success" ? (
-            <CheckCircle2 className="w-5 h-5 shrink-0" />
-          ) : (
-            <AlertCircle className="w-5 h-5 shrink-0" />
-          )}
-          <span>{feedbackMsg.text}</span>
+          <div className="flex items-center gap-2.5">
+            {feedbackMsg.type === "success" ? (
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
+            ) : (
+              <AlertCircle className="w-5 h-5 shrink-0" />
+            )}
+            <span>{feedbackMsg.text}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFeedbackMsg(null)}
+            className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors shrink-0"
+            title="Tutup pesan"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
@@ -864,7 +1100,7 @@ export default function SuperadminView({
           <div>
             <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Total Pengguna</span>
             <span className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5 block">
-              <AnimatedCounter value={users.length} />
+              <AnimatedCounter value={localUsers.length} />
             </span>
             <span className="text-[11px] text-slate-400">Pegawai Terdaftar</span>
           </div>
@@ -937,7 +1173,7 @@ export default function SuperadminView({
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>Pengguna ({users.length})</span>
+            <span>Pengguna ({localUsers.length})</span>
           </button>
 
           <button
@@ -990,6 +1226,19 @@ export default function SuperadminView({
           >
             <Layers className="w-4 h-4" />
             <span>Daftar Tiket ({unresolvedTickets.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("HOSPITAL_PROFILE")}
+            className={`py-2.5 px-3 sm:px-4 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap flex items-center gap-2 transition-all shadow-sm ${
+              activeTab === "HOSPITAL_PROFILE"
+                ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/20 shadow-md"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <Building2 className="w-4 h-4" />
+            <span>Profil RS</span>
           </button>
 
           <a
@@ -1061,24 +1310,38 @@ export default function SuperadminView({
                   key={u.id}
                   className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3.5 transition-colors"
                 >
-                  <div className="flex items-start justify-between gap-2.5">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-slate-900 dark:text-white text-sm sm:text-base">
-                          {u.fullName}
-                        </span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${roleBadge.color}`}>
-                          {roleBadge.label}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                        <span className="font-mono font-semibold text-sky-600 dark:text-sky-400">@{u.username}</span>
-                        {u.nip && (
-                          <>
-                            <span>•</span>
-                            <span>NIP: {u.nip}</span>
-                          </>
-                        )}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {u.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={u.avatarUrl}
+                          alt={u.fullName}
+                          className="w-11 h-11 rounded-full object-cover border-2 border-slate-200 dark:border-white/10 shrink-0 shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-sky-500 via-indigo-600 to-purple-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-sm ring-2 ring-white dark:ring-slate-800">
+                          {getInitials(u.fullName)}
+                        </div>
+                      )}
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-900 dark:text-white text-sm sm:text-base truncate">
+                            {u.fullName}
+                          </span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${roleBadge.color}`}>
+                            {roleBadge.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                          <span className="font-mono font-semibold text-sky-600 dark:text-sky-400">@{u.username}</span>
+                          {u.nip && (
+                            <>
+                              <span>•</span>
+                              <span>NIP: {u.nip}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -1116,16 +1379,21 @@ export default function SuperadminView({
                     </button>
 
                     <button
-                      disabled={isPending || isCurrentUser}
+                      disabled={togglingUserId === u.id || isCurrentUser}
                       onClick={() => handleToggleUserStatus(u.id)}
-                      className={`py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-40 ${
+                      className={`py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 ${
                         u.isActive
                           ? "bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-500/20"
                           : "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20"
                       }`}
                       title={u.isActive ? "Nonaktifkan akun" : "Aktifkan akun"}
                     >
-                      {u.isActive ? (
+                      {togglingUserId === u.id ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />
+                          Memproses...
+                        </>
+                      ) : u.isActive ? (
                         <>
                           <UserX className="w-3.5 h-3.5 text-rose-500" />
                           Nonaktifkan
@@ -1620,6 +1888,27 @@ export default function SuperadminView({
 
               <button
                 type="button"
+                onClick={() => setTicketStatusFilter("RESOLVED")}
+                className={`py-1.5 px-3 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+                  ticketStatusFilter === "RESOLVED"
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
+              >
+                <span>Selesai Dikerjakan</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                    ticketStatusFilter === "RESOLVED"
+                      ? "bg-white/20 text-white"
+                      : "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
+                  }`}
+                >
+                  {resolvedTickets.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setTicketStatusFilter("ALL")}
                 className={`py-1.5 px-3 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
                   ticketStatusFilter === "ALL"
@@ -1644,7 +1933,13 @@ export default function SuperadminView({
           {/* Keterangan Jumlah Hasil */}
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
             <span>
-              Menampilkan <strong className="text-slate-900 dark:text-white font-bold">{filteredTickets.length}</strong> tiket {ticketStatusFilter === "UNRESOLVED" ? "yang belum selesai" : "sesuai filter"}
+              Menampilkan <strong className="text-slate-900 dark:text-white font-bold">{filteredTickets.length}</strong> tiket {
+                ticketStatusFilter === "UNRESOLVED" 
+                  ? "yang belum selesai" 
+                  : ticketStatusFilter === "RESOLVED"
+                  ? "yang telah selesai dikerjakan"
+                  : "sesuai filter"
+              }
             </span>
             {ticketStatusFilter !== "UNRESOLVED" && (
               <button
@@ -1671,11 +1966,15 @@ export default function SuperadminView({
                 <h4 className="text-base font-bold text-slate-900 dark:text-white">
                   {ticketStatusFilter === "UNRESOLVED" && !ticketSearch && ticketUrgencyFilter === "ALL"
                     ? "Tidak Ada Tiket Antrean yang Belum Selesai"
+                    : ticketStatusFilter === "RESOLVED" && !ticketSearch && ticketUrgencyFilter === "ALL"
+                    ? "Belum Ada Tiket yang Selesai Dikerjakan"
                     : "Tidak Ada Tiket yang Cocok"}
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
                   {ticketStatusFilter === "UNRESOLVED" && !ticketSearch && ticketUrgencyFilter === "ALL"
                     ? "Luar biasa! Seluruh kendala fasilitas TI rumah sakit saat ini telah terselesaikan dengan baik oleh Staf TI."
+                    : ticketStatusFilter === "RESOLVED" && !ticketSearch && ticketUrgencyFilter === "ALL"
+                    ? "Belum ada tiket aduan fasilitas TI yang ditandai selesai atau ditutup."
                     : "Coba sesuaikan kata kunci pencarian atau ubah filter status & tingkat urgensi."}
                 </p>
                 {(ticketSearch || ticketUrgencyFilter !== "ALL" || ticketStatusFilter !== "UNRESOLVED") && (
@@ -1859,11 +2158,15 @@ export default function SuperadminView({
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white">
                   {ticketStatusFilter === "UNRESOLVED"
                     ? "Tidak Ada Tiket yang Belum Selesai"
+                    : ticketStatusFilter === "RESOLVED"
+                    ? "Belum Ada Tiket yang Selesai Dikerjakan"
                     : "Tidak Ada Tiket yang Cocok"}
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   {ticketStatusFilter === "UNRESOLVED"
                     ? "Seluruh aduan fasilitas TI saat ini telah terselesaikan dengan baik."
+                    : ticketStatusFilter === "RESOLVED"
+                    ? "Belum ada tiket aduan yang berstatus selesai atau ditutup."
                     : "Coba sesuaikan pencarian atau filter status tiket."}
                 </p>
               </div>
@@ -1995,6 +2298,516 @@ export default function SuperadminView({
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* TAB 6: PROFIL RUMAH SAKIT & IDENTITAS INSTANSI (DYNAMIC KOP SURAT)        */}
+      {/* ========================================================================= */}
+      {activeTab === "HOSPITAL_PROFILE" && (
+        <div className="space-y-6">
+          {/* Header Banner Tab Profil Rumah Sakit */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-slate-900 to-teal-950/80 border border-emerald-500/30 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold border border-emerald-400/30">
+                <Building2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Identitas Resmi Rumah Sakit & Kop Surat</span>
+              </div>
+              <h3 className="text-lg sm:text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
+                <span>Pengaturan Profil Rumah Sakit</span>
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-semibold">
+                  Dinamis Global
+                </span>
+              </h3>
+              <p className="text-xs text-emerald-100/80 max-w-3xl leading-relaxed">
+                Kelola identitas resmi fasilitas kesehatan Anda: nama rumah sakit, kelas, jenis kepemilikan, kontak, kode integrasi nasional (BPJS, Kemenkes, SATUSEHAT), serta logo resmi. Data ini otomatis digunakan di seluruh kop surat laporan cetak, file ekspor Excel, dan header sistem SIATI.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => router.refresh()}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 text-white transition-colors self-start sm:self-auto shrink-0 shadow-sm border border-white/15"
+              title="Segarkan data profil rumah sakit"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Muat Ulang</span>
+            </button>
+          </div>
+
+          {/* Feedback Message Banner */}
+          {hpSavedMsg && (
+            <div
+              className={`p-4 rounded-xl border flex items-center gap-3 text-xs sm:text-sm font-semibold transition-all shadow-sm ${
+                hpSavedMsg.type === "success"
+                  ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                  : "bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+              }`}
+            >
+              {hpSavedMsg.type === "success" ? (
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+              )}
+              <div className="flex-1">{hpSavedMsg.text}</div>
+              <button
+                type="button"
+                onClick={() => setHpSavedMsg(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Grid Layout: Form Pengaturan (Kiri) & Live Preview Kop Surat (Kanan) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* KOLOM KIRI: FORMULIR IDENTITAS (7 Kolom) */}
+            <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-5 sm:p-6 shadow-sm space-y-6">
+              <div className="border-b border-slate-100 dark:border-white/10 pb-4">
+                <h4 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  Formulir Data Rumah Sakit
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Lengkapi setiap informasi fasilitas kesehatan secara akurat sesuai data perizinan resmi.
+                </p>
+              </div>
+
+              <form
+                action={async (formData) => {
+                  setHpSavedMsg(null);
+                  startTransition(async () => {
+                    formData.set("logoUrl", hpForm.logoUrl || "");
+                    const res = await updateHospitalProfileAction(formData);
+                    if (res.success) {
+                      setHpSavedMsg({
+                        type: "success",
+                        text: res.message || "Profil rumah sakit berhasil disimpan!",
+                      });
+                      router.refresh();
+                    } else {
+                      setHpSavedMsg({
+                        type: "error",
+                        text: res.message || "Gagal menyimpan profil rumah sakit.",
+                      });
+                    }
+                  });
+                }}
+                className="space-y-5 text-xs"
+              >
+                {/* 1. SEKSI IDENTITAS DASAR */}
+                <div className="space-y-3">
+                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5" />
+                    1. Identitas Pokok Rumah Sakit
+                  </span>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block">
+                      Nama Resmi Rumah Sakit *
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      required
+                      value={hpForm.name}
+                      onChange={(e) => setHpForm({ ...hpForm, name: e.target.value })}
+                      placeholder="Contoh: RSUD Dr. Soetomo Surabaya"
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold text-xs focus:ring-2 focus:ring-emerald-500/40"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300 block">
+                        Kelas Rumah Sakit *
+                      </label>
+                      <select
+                        name="hospitalClass"
+                        value={hpForm.hospitalClass}
+                        onChange={(e) => setHpForm({ ...hpForm, hospitalClass: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-xs focus:ring-2 focus:ring-emerald-500/40"
+                      >
+                        <option value="Kelas A">Kelas A (Rujukan Nasional / Provinsi)</option>
+                        <option value="Kelas B">Kelas B (Rujukan Regional)</option>
+                        <option value="Kelas C">Kelas C (Rujukan Kabupaten / Kota)</option>
+                        <option value="Kelas D">Kelas D (Pratama)</option>
+                        <option value="Kelas Khusus">Kelas Khusus (Ibu & Anak, Jiwa, Kanker, dll)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300 block">
+                        Jenis Kepemilikan (Swasta / Pemerintah) *
+                      </label>
+                      <select
+                        name="ownershipType"
+                        value={hpForm.ownershipType}
+                        onChange={(e) => setHpForm({ ...hpForm, ownershipType: e.target.value })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-xs focus:ring-2 focus:ring-emerald-500/40"
+                      >
+                        <option value="Pemerintah">Pemerintah (Kemenkes / Pemda / Daerah)</option>
+                        <option value="Swasta">Swasta (Korporasi / PT Swasta)</option>
+                        <option value="BUMN">BUMN (Badan Usaha Milik Negara)</option>
+                        <option value="TNI">TNI (Rumkit Angkatan)</option>
+                        <option value="Polri">Polri (Rumkit Bhayangkara)</option>
+                        <option value="Yayasan">Yayasan / Nirlaba / Organisasi</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. SEKSI KONTAK & ALAMAT */}
+                <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-white/10">
+                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5" />
+                    2. Kontak & Alamat Lengkap
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300 block">
+                        Nomor Telepon / Call Center
+                      </label>
+                      <div className="relative">
+                        <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                        <input
+                          type="text"
+                          name="phone"
+                          value={hpForm.phone}
+                          onChange={(e) => setHpForm({ ...hpForm, phone: e.target.value })}
+                          placeholder="Contoh: (021) 1234567 / 0812345678"
+                          className="w-full pl-9 pr-3 p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300 block">
+                        Email Resmi
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                        <input
+                          type="email"
+                          name="email"
+                          value={hpForm.email}
+                          onChange={(e) => setHpForm({ ...hpForm, email: e.target.value })}
+                          placeholder="Contoh: kontak@rsud-daerah.go.id"
+                          className="w-full pl-9 pr-3 p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block">
+                      Alamat Lengkap Instansi *
+                    </label>
+                    <textarea
+                      name="address"
+                      required
+                      rows={2}
+                      value={hpForm.address}
+                      onChange={(e) => setHpForm({ ...hpForm, address: e.target.value })}
+                      placeholder="Contoh: Jl. Kesehatan Medika No. 1, Kel. Gambir, Kec. Gambir, Kota Jakarta Pusat, DKI Jakarta 10110"
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs resize-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block">
+                      Situs Web Resmi (Opsional)
+                    </label>
+                    <div className="relative">
+                      <Globe className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="url"
+                        name="website"
+                        value={hpForm.website}
+                        onChange={(e) => setHpForm({ ...hpForm, website: e.target.value })}
+                        placeholder="Contoh: https://rsud.go.id"
+                        className="w-full pl-9 pr-3 p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. SEKSI KODE INTEGRASI NASIONAL */}
+                <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-white/10">
+                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <FileCheck className="w-3.5 h-3.5" />
+                    3. Kode Integrasi Layanan Nasional
+                  </span>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300 block">
+                        Kode PPK BPJS
+                      </label>
+                      <input
+                        type="text"
+                        name="bpjsPpkCode"
+                        value={hpForm.bpjsPpkCode}
+                        onChange={(e) => setHpForm({ ...hpForm, bpjsPpkCode: e.target.value })}
+                        placeholder="Contoh: 0123R001"
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300 block">
+                        Kode Kemenkes RS
+                      </label>
+                      <input
+                        type="text"
+                        name="kemenkesCode"
+                        value={hpForm.kemenkesCode}
+                        onChange={(e) => setHpForm({ ...hpForm, kemenkesCode: e.target.value })}
+                        placeholder="Contoh: 3171012"
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-xs"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300 block">
+                        ID Organisasi SATUSEHAT
+                      </label>
+                      <input
+                        type="text"
+                        name="satuSehatId"
+                        value={hpForm.satuSehatId}
+                        onChange={(e) => setHpForm({ ...hpForm, satuSehatId: e.target.value })}
+                        placeholder="Contoh: org-1000001"
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. SEKSI LOGO RUMAH SAKIT */}
+                <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-white/10">
+                  <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    4. Logo Resmi Rumah Sakit
+                  </span>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl border border-dashed border-slate-300 dark:border-white/20 bg-slate-50 dark:bg-slate-800/50">
+                    {/* Preview Box */}
+                    <div className="w-24 h-24 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 flex items-center justify-center p-2 shrink-0 shadow-sm relative overflow-hidden">
+                      {hpForm.logoUrl ? (
+                        <img
+                          src={hpForm.logoUrl}
+                          alt="Logo Rumah Sakit"
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <div className="text-center text-slate-400">
+                          <Building2 className="w-8 h-8 mx-auto mb-1 opacity-50" />
+                          <span className="text-[9px] font-bold uppercase block">Belum Ada</span>
+                        </div>
+                      )}
+                      {isUploadingLogo && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white">
+                          <RefreshCw className="w-5 h-5 animate-spin" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Upload Controls */}
+                    <div className="flex-1 space-y-2 text-center sm:text-left w-full">
+                      <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+                        <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all active:scale-95">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>{isUploadingLogo ? "Mengunggah..." : "Unggah Berkas Logo"}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            disabled={isUploadingLogo}
+                            onChange={handleLogoUpload}
+                            className="hidden"
+                          />
+                        </label>
+
+                        {hpForm.logoUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setHpForm((prev) => ({ ...prev, logoUrl: "" }))}
+                            className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-200 hover:bg-rose-100 hover:text-rose-700 dark:bg-slate-800 dark:hover:bg-rose-950/50 dark:hover:text-rose-300 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Hapus Logo</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Format: PNG, JPG, SVG, atau WebP (disarankan latar transparan, maks 5 MB).
+                      </p>
+
+                      {uploadError && (
+                        <div className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1 justify-center sm:justify-start">
+                          <AlertTriangle className="w-3 h-3 shrink-0" />
+                          <span>{uploadError}</span>
+                        </div>
+                      )}
+
+                      {/* Atau Input Link URL Manual */}
+                      <div className="pt-1">
+                        <input
+                          type="text"
+                          value={hpForm.logoUrl}
+                          onChange={(e) => setHpForm({ ...hpForm, logoUrl: e.target.value })}
+                          placeholder="Atau tempel URL gambar logo langsung di sini..."
+                          className="w-full p-2 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-[11px] text-slate-800 dark:text-slate-200"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tombol Simpan Form */}
+                <div className="pt-4 border-t border-slate-100 dark:border-white/10 flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={isPending}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white font-extrabold text-xs sm:text-sm transition-all shadow-md shadow-emerald-900/30 disabled:opacity-50"
+                  >
+                    {isPending ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Menyimpan Profil...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>Simpan Profil Rumah Sakit</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* KOLOM KANAN: LIVE PREVIEW KOP SURAT CETAK (5 Kolom) */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span className="font-extrabold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
+                      Pratinjau Kop Surat Resmi
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 animate-pulse">
+                    Live Real-Time
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Berikut tampilan kop surat resmi saat manajemen mencetak laporan atau mengekspor PDF rekapitulasi kinerja IT:
+                </p>
+
+                {/* Simulated Paper Sheet Kop Surat */}
+                <div className="bg-white text-black p-5 rounded-xl border-2 border-slate-300 dark:border-white/20 shadow-md space-y-3">
+                  <div className="flex items-center justify-between gap-4 pb-2 border-b-2 border-black">
+                    {hpForm.logoUrl ? (
+                      <img
+                        src={hpForm.logoUrl}
+                        alt="Logo RS"
+                        className="w-16 h-16 object-contain shrink-0"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 border border-dashed border-black rounded-lg flex flex-col items-center justify-center font-bold text-[9px] uppercase text-center p-1 shrink-0">
+                        <Building2 className="w-5 h-5 mb-0.5 text-black" />
+                        <span>LOGO RS</span>
+                      </div>
+                    )}
+
+                    <div className="flex-1 text-center">
+                      <div className="text-sm font-black tracking-wider uppercase mt-0.5 line-clamp-2">
+                        {hpForm.name || "NAMA RUMAH SAKIT"}
+                      </div>
+                      <div className="text-[9px] font-normal mt-0.5 text-gray-700 leading-tight">
+                        {hpForm.address || "Alamat Fasilitas Kesehatan"}
+                      </div>
+                      <div className="text-[9px] text-gray-600 flex items-center justify-center gap-2 flex-wrap mt-0.5">
+                        {hpForm.phone && <span>Telp: {hpForm.phone}</span>}
+                        {hpForm.email && <span>Email: {hpForm.email}</span>}
+                        {hpForm.website && <span>Web: {hpForm.website}</span>}
+                      </div>
+                    </div>
+
+                    <div className="w-14 shrink-0" />
+                  </div>
+
+                  {/* Sample Title under Kop */}
+                  <div className="text-center pt-1 space-y-1">
+                    <div className="text-[11px] font-extrabold uppercase">
+                      Rekapitulasi Kinerja Pelayanan & Tingkat Kepatuhan SLA TI
+                    </div>
+                    <div className="text-[9px] text-gray-600">
+                      Instalasi Teknologi Informasi • Tanggal: {new Date().toLocaleDateString("id-ID")}
+                    </div>
+                  </div>
+
+                  {/* Mini Mock Table */}
+                  <div className="border border-gray-300 rounded overflow-hidden text-[8px] mt-2">
+                    <div className="grid grid-cols-4 bg-gray-100 font-bold p-1 text-center border-b border-gray-300">
+                      <span>No Tiket</span>
+                      <span>Unit RS</span>
+                      <span>Target SLA</span>
+                      <span>Status</span>
+                    </div>
+                    <div className="grid grid-cols-4 p-1 text-center border-b border-gray-200">
+                      <span className="font-mono">TKT-202610-001</span>
+                      <span>Rawat Inap A</span>
+                      <span>15 Menit</span>
+                      <span className="text-emerald-700 font-bold">Selesai</span>
+                    </div>
+                    <div className="grid grid-cols-4 p-1 text-center">
+                      <span className="font-mono">TKT-202610-002</span>
+                      <span>IGD Medika</span>
+                      <span>10 Menit</span>
+                      <span className="text-emerald-700 font-bold">Selesai</span>
+                    </div>
+                  </div>
+
+                  {/* Mini Signature Preview */}
+                  <div className="flex justify-end pt-2 text-[8px]">
+                    <div className="text-right space-y-0.5">
+                      <div className="text-gray-600">{new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</div>
+                      <div className="font-bold text-gray-700">Tertanda</div>
+                      <div className="font-black text-[9px] uppercase tracking-wider text-black">STAFF IT</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Info Card: Integrasi Global */}
+              <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-white/10 rounded-2xl p-4 space-y-2.5 text-xs">
+                <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 text-xs">
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  Alur Penyebaran Dinamis Data Rumah Sakit
+                </span>
+                <ul className="space-y-1.5 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed list-disc list-inside">
+                  <li>
+                    <strong className="text-slate-900 dark:text-slate-200">Dashboard Navbar:</strong> Menampilkan logo dan nama rumah sakit di samping merek SIATI.
+                  </li>
+                  <li>
+                    <strong className="text-slate-900 dark:text-slate-200">Kop Cetak & PDF:</strong> Otomatis dicantumkan saat klik tombol &apos;Cetak Laporan&apos; di Portal Manajemen.
+                  </li>
+                  <li>
+                    <strong className="text-slate-900 dark:text-slate-200">Berkas Ekspor Excel / CSV:</strong> Identitas instansi, kode BPJS, dan Kemenkes disematkan pada baris ringkasan berkas.
+                  </li>
+                  <li>
+                    <strong className="text-slate-900 dark:text-slate-200">Audit Keamanan:</strong> Setiap perubahan profil tercatat di riwayat log audit super admin.
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
         </motion.div>
       </AnimatePresence>
         </div>
@@ -2017,7 +2830,7 @@ export default function SuperadminView({
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 shadow-2xl"
             >
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-3">
               <h4 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -2025,7 +2838,12 @@ export default function SuperadminView({
                 Daftarkan Pengguna Pegawai Baru
               </h4>
               <button
-                onClick={() => setIsAddUserOpen(false)}
+                onClick={() => {
+                  setIsAddUserOpen(false);
+                  setNewUserAvatarUrl("");
+                  setNewFullNamePreview("");
+                  setUserAvatarError(null);
+                }}
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold"
               >
                 ✕
@@ -2039,8 +2857,11 @@ export default function SuperadminView({
                   const res = await createUserAction(formData);
                   if (res.success) {
                     setIsAddUserOpen(false);
+                    setNewUserAvatarUrl("");
+                    setNewFullNamePreview("");
+                    setUserAvatarError(null);
                     setFeedbackMsg({ type: "success", text: res.message || "Pengguna berhasil didaftarkan." });
-                    window.location.reload();
+                    router.refresh();
                   } else {
                     setFeedbackMsg({ type: "error", text: res.message || "Gagal mendaftarkan pengguna." });
                   }
@@ -2048,6 +2869,86 @@ export default function SuperadminView({
               }}
               className="space-y-3.5 text-xs"
             >
+              {/* Unggah Foto Profil Pegawai */}
+              <div className="flex items-center gap-4 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-white/10">
+                <div className="relative shrink-0">
+                  {newUserAvatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={newUserAvatarUrl}
+                      alt="Pratinjau Foto Profil"
+                      className="w-16 h-16 rounded-full object-cover border-2 border-sky-500 shadow-md ring-2 ring-sky-500/20"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 text-center shadow-inner">
+                      {newFullNamePreview.trim() ? (
+                        <span className="font-extrabold text-sm text-slate-700 dark:text-slate-200">
+                          {getInitials(newFullNamePreview)}
+                        </span>
+                      ) : (
+                        <Camera className="w-6 h-6 text-slate-400 dark:text-slate-500" />
+                      )}
+                      <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
+                        {newUserAvatarUrl ? "Foto" : "Placeholder"}
+                      </span>
+                    </div>
+                  )}
+
+                  {isUploadingUserAvatar && (
+                    <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center backdrop-blur-xs">
+                      <Loader2 className="w-5 h-5 text-white animate-spin" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-slate-900 dark:text-white">
+                      Foto Profil Pegawai
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">Opsional</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
+                    Format JPG, PNG, atau WebP. Jika dikosongkan, sistem otomatis menggunakan foto placeholder berinisial nama.
+                  </p>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <label className="cursor-pointer py-1.5 px-3 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-95 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{newUserAvatarUrl ? "Ganti Foto" : "Pilih Foto"}</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/jpg"
+                        className="hidden"
+                        onChange={handleUserAvatarUpload}
+                        disabled={isUploadingUserAvatar}
+                      />
+                    </label>
+
+                    {newUserAvatarUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setNewUserAvatarUrl("")}
+                        className="py-1.5 px-2.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40 text-xs font-semibold flex items-center gap-1 transition-colors"
+                        title="Hapus foto dan gunakan placeholder"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Pakai Placeholder</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {userAvatarError && (
+                    <p className="text-[11px] text-rose-500 font-medium mt-1">
+                      {userAvatarError}
+                    </p>
+                  )}
+                </div>
+
+                {/* Hidden input agar avatarUrl ikut terkirim dalam formData */}
+                <input type="hidden" name="avatarUrl" value={newUserAvatarUrl} />
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block">
@@ -2083,6 +2984,8 @@ export default function SuperadminView({
                   type="text"
                   name="fullName"
                   required
+                  value={newFullNamePreview}
+                  onChange={(e) => setNewFullNamePreview(e.target.value)}
                   placeholder="Contoh: dr. Hendra Saputra, Sp.B"
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
                 />
@@ -2152,7 +3055,12 @@ export default function SuperadminView({
               <div className="flex gap-2.5 pt-3">
                 <button
                   type="button"
-                  onClick={() => setIsAddUserOpen(false)}
+                  onClick={() => {
+                    setIsAddUserOpen(false);
+                    setNewUserAvatarUrl("");
+                    setNewFullNamePreview("");
+                    setUserAvatarError(null);
+                  }}
                   className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold"
                 >
                   Batal
@@ -2208,7 +3116,7 @@ export default function SuperadminView({
                   if (res.success) {
                     setIsAddUnitOpen(false);
                     setFeedbackMsg({ type: "success", text: res.message || "Unit berhasil dibuat." });
-                    window.location.reload();
+                    router.refresh();
                   } else {
                     setFeedbackMsg({ type: "error", text: res.message || "Gagal membuat unit." });
                   }
@@ -2301,7 +3209,7 @@ export default function SuperadminView({
                     if (res.success) {
                       setIsAddCatOpen(false);
                       setFeedbackMsg({ type: "success", text: res.message || "Kategori berhasil dibuat." });
-                      window.location.reload();
+                      router.refresh();
                     } else {
                       setFeedbackMsg({ type: "error", text: res.message || "Gagal membuat kategori." });
                     }

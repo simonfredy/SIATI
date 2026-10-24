@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Bell, CheckCircle2, AlertTriangle, RefreshCw, X, Radio } from "lucide-react";
+import { Bell, CheckCircle2, AlertTriangle, RefreshCw, X, Radio, UserCheck, Wrench } from "lucide-react";
 import { RealtimeEventPayload } from "@/lib/realtime";
 
 interface ToastNotification extends RealtimeEventPayload {
@@ -100,22 +100,36 @@ export default function RealtimeSync() {
           if (lastEventRef.current === eventKey) return;
           lastEventRef.current = eventKey;
 
-          // 1. Putar Nada Notifikasi
-          const isEmergency = payload.urgency === "EMERGENCY" || payload.urgency === "HIGH";
-          playNotificationChime(isEmergency);
+          // Filter Ketat: Notifikasi toast & suara lonceng HANYA untuk 4 jenis kejadian:
+          // 1. Tiket Baru (TICKET_CREATED)
+          // 2. Yang Menangani Tiket (TICKET_ASSIGNED)
+          // 3. Pergantian Parts (TICKET_PENDING_PARTS)
+          // 4. Tiket Selesai (TICKET_RESOLVED)
+          // Pergantian urgensi maupun status lainnya TIDAK memunculkan notifikasi/suara.
+          const shouldNotify =
+            payload.type === "TICKET_CREATED" ||
+            payload.type === "TICKET_ASSIGNED" ||
+            payload.type === "TICKET_PENDING_PARTS" ||
+            payload.type === "TICKET_RESOLVED";
 
-          // 2. Tampilkan Toast Melayang
-          const toastId = `toast_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-          const newToast: ToastNotification = { ...payload, id: toastId };
+          if (shouldNotify) {
+            // 1. Putar Nada Notifikasi
+            const isEmergency = payload.urgency === "EMERGENCY" || payload.urgency === "HIGH";
+            playNotificationChime(isEmergency);
 
-          setToasts((prev) => [newToast, ...prev.slice(0, 3)]); // Maksimal 4 notifikasi bersamaan
+            // 2. Tampilkan Toast Melayang
+            const toastId = `toast_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+            const newToast: ToastNotification = { ...payload, id: toastId };
 
-          // Auto-dismiss toast setelah 6 detik
-          setTimeout(() => {
-            removeToast(toastId);
-          }, 6000);
+            setToasts((prev) => [newToast, ...prev.slice(0, 3)]); // Maksimal 4 notifikasi bersamaan
 
-          // 3. Trigger Re-render Data Tanpa Reload Halaman
+            // Auto-dismiss toast setelah 6 detik
+            setTimeout(() => {
+              removeToast(toastId);
+            }, 6000);
+          }
+
+          // 3. Selalu perbarui data UI di latar belakang secara mulus tanpa reload
           router.refresh();
         } catch (err) {
           console.error("Gagal memproses pesan real-time:", err);
@@ -154,34 +168,40 @@ export default function RealtimeSync() {
       {toasts.map((toast) => {
         const isEmergency = toast.urgency === "EMERGENCY";
         const isResolved = toast.type === "TICKET_RESOLVED";
+        const isPendingParts = toast.type === "TICKET_PENDING_PARTS";
+        const isAssigned = toast.type === "TICKET_ASSIGNED";
+
+        let cardBg = "bg-slate-900/95 text-white border-slate-700/80 shadow-black/60";
+        let iconBg = "bg-sky-500/30 text-sky-300";
+        let iconEl = <Bell className="w-4 h-4" />;
+
+        if (isEmergency) {
+          cardBg = "bg-rose-950/95 text-white border-rose-500/60 shadow-rose-950/50";
+          iconBg = "bg-rose-500/30 text-rose-300";
+          iconEl = <AlertTriangle className="w-4 h-4 animate-bounce" />;
+        } else if (isResolved) {
+          cardBg = "bg-emerald-950/95 text-white border-emerald-500/60 shadow-emerald-950/50";
+          iconBg = "bg-emerald-500/30 text-emerald-300";
+          iconEl = <CheckCircle2 className="w-4 h-4" />;
+        } else if (isPendingParts) {
+          cardBg = "bg-purple-950/95 text-white border-purple-500/60 shadow-purple-950/50";
+          iconBg = "bg-purple-500/30 text-purple-300";
+          iconEl = <Wrench className="w-4 h-4" />;
+        } else if (isAssigned) {
+          cardBg = "bg-indigo-950/95 text-white border-indigo-500/60 shadow-indigo-950/50";
+          iconBg = "bg-indigo-500/30 text-indigo-300";
+          iconEl = <UserCheck className="w-4 h-4" />;
+        }
 
         return (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex items-start gap-3 p-3.5 sm:p-4 rounded-2xl border shadow-2xl backdrop-blur-md transition-all animate-in slide-in-from-top-3 fade-in duration-300 ${
-              isEmergency
-                ? "bg-rose-950/95 text-white border-rose-500/60 shadow-rose-950/50"
-                : isResolved
-                ? "bg-emerald-950/95 text-white border-emerald-500/60 shadow-emerald-950/50"
-                : "bg-slate-900/95 text-white border-slate-700/80 shadow-black/60"
-            }`}
+            className={`pointer-events-auto flex items-start gap-3 p-3.5 sm:p-4 rounded-2xl border shadow-2xl backdrop-blur-md transition-all animate-in slide-in-from-top-3 fade-in duration-300 ${cardBg}`}
           >
             <div
-              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 shadow-sm ${
-                isEmergency
-                  ? "bg-rose-500/30 text-rose-300"
-                  : isResolved
-                  ? "bg-emerald-500/30 text-emerald-300"
-                  : "bg-sky-500/30 text-sky-300"
-              }`}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 shadow-sm ${iconBg}`}
             >
-              {isEmergency ? (
-                <AlertTriangle className="w-4 h-4 animate-bounce" />
-              ) : isResolved ? (
-                <CheckCircle2 className="w-4 h-4" />
-              ) : (
-                <Bell className="w-4 h-4" />
-              )}
+              {iconEl}
             </div>
 
             <div className="flex-1 min-w-0">

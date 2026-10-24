@@ -40,6 +40,7 @@ export const updateTicketStatusSchema = z.object({
   urgency: z.enum(["EMERGENCY", "HIGH", "MEDIUM", "LOW"]).optional(),
   notes: z.string().max(1000, "Catatan maksimal 1000 karakter").optional(),
   assignedTechnicianId: z.string().uuid().optional(),
+  silent: z.boolean().optional(),
 });
 
 export const rateTicketSchema = z.object({

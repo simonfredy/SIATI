@@ -11,7 +11,7 @@
  Target Server Version : 110806 (11.8.6-MariaDB-log)
  File Encoding         : 65001
 
- Date: 24/10/2026 20:36:11
+ Date: 24/10/2026 23:14:34
 */
 
 SET NAMES utf8mb4;
@@ -91,6 +91,32 @@ INSERT INTO `department_units` VALUES (12, 'Direksi & Manajemen RSBM', 'Gedung M
 INSERT INTO `department_units` VALUES (13, 'Manajemen RSBM', 'Gedung Manajemen Lt. 3', 'LOC-MANAJEMEN-01');
 
 -- ----------------------------
+-- Table structure for hospital_profile
+-- ----------------------------
+DROP TABLE IF EXISTS `hospital_profile`;
+CREATE TABLE `hospital_profile`  (
+  `id` int(11) NOT NULL DEFAULT 1,
+  `name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Rumah Sakit Umum Daerah',
+  `hospitalClass` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Kelas B',
+  `ownershipType` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Pemerintah',
+  `phone` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '(021) 1234567',
+  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'kontak@rumahsakit.co.id',
+  `bpjsPpkCode` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `kemenkesCode` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `satuSehatId` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `logoUrl` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `website` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
+  `updatedAt` datetime(3) NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Records of hospital_profile
+-- ----------------------------
+INSERT INTO `hospital_profile` VALUES (1, 'Rumah Sakit Umum Daerah', 'Kelas B', 'Pemerintah', '(021) 1234567', 'kontak@rumahsakit.co.id', '0123R001', '3171012', 'org-1000001', 'Jl. Kesehatan Medika No. 1, Kota Medika', NULL, 'https://rumahsakit.co.id', '2026-10-24 14:49:26.708');
+
+-- ----------------------------
 -- Table structure for system_audit_logs
 -- ----------------------------
 DROP TABLE IF EXISTS `system_audit_logs`;
@@ -107,7 +133,7 @@ CREATE TABLE `system_audit_logs`  (
   INDEX `system_audit_logs_action_idx`(`action` ASC) USING BTREE,
   INDEX `system_audit_logs_userId_idx`(`userId` ASC) USING BTREE,
   CONSTRAINT `system_audit_logs_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE = InnoDB AUTO_INCREMENT = 124 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 170 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of system_audit_logs
@@ -235,6 +261,52 @@ INSERT INTO `system_audit_logs` VALUES (120, 'd3bc3531-0abb-487c-a4c2-90d2d25354
 INSERT INTO `system_audit_logs` VALUES (121, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'TICKET_SET_URGENCY_LOW', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0005\",\"previousStatus\":\"RESOLVED\",\"newStatus\":\"RESOLVED\",\"urgency\":\"LOW\"}', '2026-10-24 13:34:51.212');
 INSERT INTO `system_audit_logs` VALUES (122, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'TICKET_SET_URGENCY_MEDIUM', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0005\",\"previousStatus\":\"RESOLVED\",\"newStatus\":\"RESOLVED\",\"urgency\":\"MEDIUM\"}', '2026-10-24 13:34:54.994');
 INSERT INTO `system_audit_logs` VALUES (123, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'TICKET_SET_URGENCY_HIGH', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261023-0006\",\"previousStatus\":\"RESOLVED\",\"newStatus\":\"RESOLVED\",\"urgency\":\"HIGH\"}', '2026-10-24 13:35:06.285');
+INSERT INTO `system_audit_logs` VALUES (124, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'TICKET_ADJUST_URGENCY', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261023-0004\",\"previousStatus\":\"IN_PROGRESS\",\"newStatus\":\"IN_PROGRESS\",\"urgency\":\"HIGH\",\"silent\":true}', '2026-10-24 13:47:16.377');
+INSERT INTO `system_audit_logs` VALUES (125, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'SUPERADMIN_DEACTIVATE_USER', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"targetUserId\":\"27032419-a496-4d91-b3c9-0e56884f5a10\",\"targetUsername\":\"manajemen\",\"newStatus\":false}', '2026-10-24 13:49:03.532');
+INSERT INTO `system_audit_logs` VALUES (126, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'SUPERADMIN_ACTIVATE_USER', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"targetUserId\":\"27032419-a496-4d91-b3c9-0e56884f5a10\",\"targetUsername\":\"manajemen\",\"newStatus\":true}', '2026-10-24 13:49:04.749');
+INSERT INTO `system_audit_logs` VALUES (127, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'TICKET_ADJUST_URGENCY', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261023-0004\",\"previousStatus\":\"IN_PROGRESS\",\"newStatus\":\"IN_PROGRESS\",\"urgency\":\"EMERGENCY\",\"silent\":true}', '2026-10-24 13:49:13.539');
+INSERT INTO `system_audit_logs` VALUES (128, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'TICKET_ADJUST_URGENCY', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261023-0004\",\"previousStatus\":\"IN_PROGRESS\",\"newStatus\":\"IN_PROGRESS\",\"urgency\":\"HIGH\",\"silent\":true}', '2026-10-24 13:49:15.100');
+INSERT INTO `system_audit_logs` VALUES (129, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'LOGIN_SUCCESS', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"role\":\"IT_STAFF\"}', '2026-10-24 13:49:38.023');
+INSERT INTO `system_audit_logs` VALUES (130, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_STATUS_RESOLVED', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261023-0004\",\"previousStatus\":\"IN_PROGRESS\",\"newStatus\":\"RESOLVED\"}', '2026-10-24 13:49:44.643');
+INSERT INTO `system_audit_logs` VALUES (131, 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 'CREATE_TICKET', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"urgency\":\"MEDIUM\"}', '2026-10-24 13:49:55.121');
+INSERT INTO `system_audit_logs` VALUES (132, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_ADJUST_URGENCY', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"SUBMITTED\",\"newStatus\":\"SUBMITTED\",\"urgency\":\"HIGH\"}', '2026-10-24 13:50:01.939');
+INSERT INTO `system_audit_logs` VALUES (133, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_ADJUST_URGENCY', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"SUBMITTED\",\"newStatus\":\"SUBMITTED\",\"urgency\":\"MEDIUM\"}', '2026-10-24 13:50:03.369');
+INSERT INTO `system_audit_logs` VALUES (134, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_ADJUST_URGENCY', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"SUBMITTED\",\"newStatus\":\"SUBMITTED\",\"urgency\":\"EMERGENCY\"}', '2026-10-24 13:50:10.788');
+INSERT INTO `system_audit_logs` VALUES (135, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_ADJUST_URGENCY', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"SUBMITTED\",\"newStatus\":\"SUBMITTED\",\"urgency\":\"MEDIUM\"}', '2026-10-24 13:50:12.408');
+INSERT INTO `system_audit_logs` VALUES (136, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_STATUS_ASSIGNED', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"SUBMITTED\",\"newStatus\":\"ASSIGNED\"}', '2026-10-24 13:50:19.756');
+INSERT INTO `system_audit_logs` VALUES (137, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_ADJUST_URGENCY', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"ASSIGNED\",\"newStatus\":\"ASSIGNED\",\"urgency\":\"LOW\"}', '2026-10-24 13:50:25.596');
+INSERT INTO `system_audit_logs` VALUES (138, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_STATUS_IN_PROGRESS', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"ASSIGNED\",\"newStatus\":\"IN_PROGRESS\"}', '2026-10-24 13:50:26.688');
+INSERT INTO `system_audit_logs` VALUES (139, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_ADJUST_URGENCY', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"IN_PROGRESS\",\"newStatus\":\"IN_PROGRESS\",\"urgency\":\"HIGH\"}', '2026-10-24 13:50:34.834');
+INSERT INTO `system_audit_logs` VALUES (140, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_ADJUST_URGENCY', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"IN_PROGRESS\",\"newStatus\":\"IN_PROGRESS\",\"urgency\":\"MEDIUM\"}', '2026-10-24 13:50:36.096');
+INSERT INTO `system_audit_logs` VALUES (141, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_STATUS_PENDING_PARTS', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"IN_PROGRESS\",\"newStatus\":\"PENDING_PARTS\"}', '2026-10-24 13:50:43.037');
+INSERT INTO `system_audit_logs` VALUES (142, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_STATUS_IN_PROGRESS', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"PENDING_PARTS\",\"newStatus\":\"IN_PROGRESS\"}', '2026-10-24 13:50:50.167');
+INSERT INTO `system_audit_logs` VALUES (143, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_STATUS_RESOLVED', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"IN_PROGRESS\",\"newStatus\":\"RESOLVED\"}', '2026-10-24 13:50:53.909');
+INSERT INTO `system_audit_logs` VALUES (144, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_ADJUST_URGENCY', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"RESOLVED\",\"newStatus\":\"RESOLVED\",\"urgency\":\"HIGH\"}', '2026-10-24 13:56:02.691');
+INSERT INTO `system_audit_logs` VALUES (145, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_ADJUST_URGENCY', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"RESOLVED\",\"newStatus\":\"RESOLVED\",\"urgency\":\"EMERGENCY\"}', '2026-10-24 13:56:03.739');
+INSERT INTO `system_audit_logs` VALUES (146, NULL, 'FAILED_LOGIN_USER_NOT_FOUND', '::1', 'LenovoVantage/3.0.0.208', '{\"username\":\"wronguser\"}', '2026-10-24 14:01:43.901');
+INSERT INTO `system_audit_logs` VALUES (147, NULL, 'FAILED_LOGIN_USER_NOT_FOUND', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"username\":\"asd\"}', '2026-10-24 14:03:00.884');
+INSERT INTO `system_audit_logs` VALUES (148, 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 'FAILED_LOGIN_WRONG_PASSWORD', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"attemptCount\":1}', '2026-10-24 14:03:11.021');
+INSERT INTO `system_audit_logs` VALUES (149, NULL, 'FAILED_LOGIN_USER_NOT_FOUND', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"username\":\"adsqd\"}', '2026-10-24 14:03:31.478');
+INSERT INTO `system_audit_logs` VALUES (150, 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 'FAILED_LOGIN_WRONG_PASSWORD', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"attemptCount\":2}', '2026-10-24 14:03:51.826');
+INSERT INTO `system_audit_logs` VALUES (151, 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 'LOGIN_SUCCESS', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"role\":\"STAFF_USER\"}', '2026-10-24 14:04:05.875');
+INSERT INTO `system_audit_logs` VALUES (152, 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 'FAILED_LOGIN_WRONG_PASSWORD', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"attemptCount\":1}', '2026-10-24 14:10:40.109');
+INSERT INTO `system_audit_logs` VALUES (153, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'LOGIN_SUCCESS', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"role\":\"SUPERADMIN\"}', '2026-10-24 14:36:18.320');
+INSERT INTO `system_audit_logs` VALUES (154, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'LOGIN_SUCCESS', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"role\":\"IT_STAFF\"}', '2026-10-24 15:23:21.772');
+INSERT INTO `system_audit_logs` VALUES (155, 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 'LOGIN_SUCCESS', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"role\":\"STAFF_USER\"}', '2026-10-24 15:23:32.925');
+INSERT INTO `system_audit_logs` VALUES (156, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_ADJUST_URGENCY', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"RESOLVED\",\"newStatus\":\"RESOLVED\",\"urgency\":\"MEDIUM\"}', '2026-10-24 15:23:56.685');
+INSERT INTO `system_audit_logs` VALUES (157, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_ADJUST_URGENCY', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"RESOLVED\",\"newStatus\":\"RESOLVED\",\"urgency\":\"EMERGENCY\"}', '2026-10-24 15:23:57.752');
+INSERT INTO `system_audit_logs` VALUES (158, 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'TICKET_ADJUST_URGENCY', '127.0.0.1', 'Browser', '{\"ticketNumber\":\"TKT-20261024-0006\",\"previousStatus\":\"RESOLVED\",\"newStatus\":\"RESOLVED\",\"urgency\":\"HIGH\"}', '2026-10-24 15:24:02.666');
+INSERT INTO `system_audit_logs` VALUES (159, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'LOGIN_SUCCESS', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"role\":\"SUPERADMIN\"}', '2026-10-24 15:27:19.976');
+INSERT INTO `system_audit_logs` VALUES (160, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'SUPERADMIN_DEACTIVATE_USER', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"targetUserId\":\"27032419-a496-4d91-b3c9-0e56884f5a10\",\"targetUsername\":\"manajemen\",\"newStatus\":false}', '2026-10-24 15:44:59.062');
+INSERT INTO `system_audit_logs` VALUES (161, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'SUPERADMIN_ACTIVATE_USER', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"targetUserId\":\"27032419-a496-4d91-b3c9-0e56884f5a10\",\"targetUsername\":\"manajemen\",\"newStatus\":true}', '2026-10-24 15:45:01.568');
+INSERT INTO `system_audit_logs` VALUES (162, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'SUPERADMIN_DEACTIVATE_USER', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"targetUserId\":\"27032419-a496-4d91-b3c9-0e56884f5a10\",\"targetUsername\":\"manajemen\",\"newStatus\":false}', '2026-10-24 15:45:04.042');
+INSERT INTO `system_audit_logs` VALUES (163, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'SUPERADMIN_ACTIVATE_USER', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"targetUserId\":\"27032419-a496-4d91-b3c9-0e56884f5a10\",\"targetUsername\":\"manajemen\",\"newStatus\":true}', '2026-10-24 15:45:05.820');
+INSERT INTO `system_audit_logs` VALUES (164, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'SUPERADMIN_DEACTIVATE_USER', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"targetUserId\":\"27032419-a496-4d91-b3c9-0e56884f5a10\",\"targetUsername\":\"manajemen\",\"newStatus\":false}', '2026-10-24 15:45:07.214');
+INSERT INTO `system_audit_logs` VALUES (165, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'SUPERADMIN_ACTIVATE_USER', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"targetUserId\":\"27032419-a496-4d91-b3c9-0e56884f5a10\",\"targetUsername\":\"manajemen\",\"newStatus\":true}', '2026-10-24 15:45:09.498');
+INSERT INTO `system_audit_logs` VALUES (166, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'SUPERADMIN_DEACTIVATE_USER', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"targetUserId\":\"27032419-a496-4d91-b3c9-0e56884f5a10\",\"targetUsername\":\"manajemen\",\"newStatus\":false}', '2026-10-24 15:45:10.568');
+INSERT INTO `system_audit_logs` VALUES (167, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'SUPERADMIN_ACTIVATE_USER', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"targetUserId\":\"27032419-a496-4d91-b3c9-0e56884f5a10\",\"targetUsername\":\"manajemen\",\"newStatus\":true}', '2026-10-24 15:52:58.579');
+INSERT INTO `system_audit_logs` VALUES (168, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'SUPERADMIN_DEACTIVATE_USER', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"targetUserId\":\"27032419-a496-4d91-b3c9-0e56884f5a10\",\"targetUsername\":\"manajemen\",\"newStatus\":false}', '2026-10-24 15:52:59.582');
+INSERT INTO `system_audit_logs` VALUES (169, 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'SUPERADMIN_ACTIVATE_USER', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36', '{\"targetUserId\":\"27032419-a496-4d91-b3c9-0e56884f5a10\",\"targetUsername\":\"manajemen\",\"newStatus\":true}', '2026-10-24 15:53:04.023');
 
 -- ----------------------------
 -- Table structure for ticket_attachments
@@ -294,6 +366,7 @@ INSERT INTO `ticket_ratings` VALUES ('9cb13741-2fc6-4546-8876-4ad8fc172f63', '2d
 INSERT INTO `ticket_ratings` VALUES ('b7f4c130-5152-4bb2-ac4d-30ad581e1226', 'e2ed07b9-5079-4c2f-9983-e28a02ba0a97', 5, 'Teknisi langsung tiba dalam hitungan menit di OK. Mantap!', '2026-10-23 14:57:19.077');
 INSERT INTO `ticket_ratings` VALUES ('c0908035-4399-48f5-a2b7-4f8430a88144', 'b55fa85d-3000-422d-8395-ac02bc3fdd3c', 5, '', '2026-10-24 04:24:14.284');
 INSERT INTO `ticket_ratings` VALUES ('c3e6e175-0744-4b63-a4e1-4c005c844d91', '786150d0-e242-4e13-9337-3f8a62c41122', 5, 'Template laporan kasir langsung diperbaiki, antrean pasien lancar.', '2026-10-23 14:57:19.085');
+INSERT INTO `ticket_ratings` VALUES ('f1365aa8-10b4-42b9-8bc4-b7d11aa67129', 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 5, '', '2026-10-24 13:50:57.031');
 INSERT INTO `ticket_ratings` VALUES ('ffc6aa1b-9317-4457-a0d6-ec039972fdc5', '6c8e0e6c-4b81-42c1-a2e3-bee2bbf3f030', 5, 'Sangat responsif dan sigap! Pelayanan darurat IGD langsung normal kembali.', '2026-10-23 14:57:19.075');
 
 -- ----------------------------
@@ -312,7 +385,7 @@ CREATE TABLE `ticket_timeline_logs`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `ticket_timeline_logs_ticketId_idx`(`ticketId` ASC) USING BTREE,
   CONSTRAINT `ticket_timeline_logs_ticketId_fkey` FOREIGN KEY (`ticketId`) REFERENCES `tickets` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = InnoDB AUTO_INCREMENT = 58 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 80 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of ticket_timeline_logs
@@ -374,6 +447,28 @@ INSERT INTO `ticket_timeline_logs` VALUES (54, '5820936f-5594-4b10-92e9-ab0d5c9e
 INSERT INTO `ticket_timeline_logs` VALUES (55, '5820936f-5594-4b10-92e9-ab0d5c9ee306', 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'Super Admin SIMRS', 'RESOLVED', 'RESOLVED', 'Urgensi diset ke LOW', '2026-10-24 13:34:51.210');
 INSERT INTO `ticket_timeline_logs` VALUES (56, '5820936f-5594-4b10-92e9-ab0d5c9ee306', 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'Super Admin SIMRS', 'RESOLVED', 'RESOLVED', 'Urgensi diset ke MEDIUM', '2026-10-24 13:34:54.991');
 INSERT INTO `ticket_timeline_logs` VALUES (57, '5bde543a-0b35-4e7f-99e1-1bf356dccf03', 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'Super Admin SIMRS', 'RESOLVED', 'RESOLVED', 'Urgensi diset ke HIGH', '2026-10-24 13:35:06.283');
+INSERT INTO `ticket_timeline_logs` VALUES (58, '281f1f85-58c2-4400-9597-c4244cf353cd', 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'Super Admin SIMRS', 'IN_PROGRESS', 'IN_PROGRESS', 'Penyesuaian tingkat urgensi layanan', '2026-10-24 13:47:16.374');
+INSERT INTO `ticket_timeline_logs` VALUES (59, '281f1f85-58c2-4400-9597-c4244cf353cd', 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'Super Admin SIMRS', 'IN_PROGRESS', 'IN_PROGRESS', 'Penyesuaian tingkat urgensi layanan', '2026-10-24 13:49:13.537');
+INSERT INTO `ticket_timeline_logs` VALUES (60, '281f1f85-58c2-4400-9597-c4244cf353cd', 'd3bc3531-0abb-487c-a4c2-90d2d2535499', 'Super Admin SIMRS', 'IN_PROGRESS', 'IN_PROGRESS', 'Penyesuaian tingkat urgensi layanan', '2026-10-24 13:49:15.098');
+INSERT INTO `ticket_timeline_logs` VALUES (61, '281f1f85-58c2-4400-9597-c4244cf353cd', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI RSBM', 'IN_PROGRESS', 'RESOLVED', 'asd', '2026-10-24 13:49:44.641');
+INSERT INTO `ticket_timeline_logs` VALUES (62, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 'Ns. Siti Rahma (Perawat IGD)', NULL, 'SUBMITTED', 'Tiket berhasil diterbitkan oleh pelapor.', '2026-10-24 13:49:55.118');
+INSERT INTO `ticket_timeline_logs` VALUES (63, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI RSBM', 'SUBMITTED', 'SUBMITTED', 'Urgensi tiket disesuaikan menjadi HIGH oleh Rian Staf TI RSBM', '2026-10-24 13:50:01.936');
+INSERT INTO `ticket_timeline_logs` VALUES (64, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI RSBM', 'SUBMITTED', 'SUBMITTED', 'Urgensi tiket disesuaikan menjadi MEDIUM oleh Rian Staf TI RSBM', '2026-10-24 13:50:03.366');
+INSERT INTO `ticket_timeline_logs` VALUES (65, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI RSBM', 'SUBMITTED', 'SUBMITTED', 'Urgensi tiket disesuaikan menjadi EMERGENCY oleh Rian Staf TI RSBM', '2026-10-24 13:50:10.784');
+INSERT INTO `ticket_timeline_logs` VALUES (66, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI RSBM', 'SUBMITTED', 'SUBMITTED', 'Urgensi tiket disesuaikan menjadi MEDIUM oleh Rian Staf TI RSBM', '2026-10-24 13:50:12.405');
+INSERT INTO `ticket_timeline_logs` VALUES (67, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI RSBM', 'SUBMITTED', 'ASSIGNED', 'Tiket diambil langsung oleh Rian Staf TI RSBM untuk penanganan segera.', '2026-10-24 13:50:19.754');
+INSERT INTO `ticket_timeline_logs` VALUES (68, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI RSBM', 'ASSIGNED', 'ASSIGNED', 'Urgensi tiket disesuaikan menjadi LOW oleh Rian Staf TI RSBM', '2026-10-24 13:50:25.594');
+INSERT INTO `ticket_timeline_logs` VALUES (69, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI RSBM', 'ASSIGNED', 'IN_PROGRESS', 'Mulai perbaikan fisik di lokasi.', '2026-10-24 13:50:26.685');
+INSERT INTO `ticket_timeline_logs` VALUES (70, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI RSBM', 'IN_PROGRESS', 'IN_PROGRESS', 'Urgensi tiket disesuaikan menjadi HIGH oleh Rian Staf TI RSBM', '2026-10-24 13:50:34.832');
+INSERT INTO `ticket_timeline_logs` VALUES (71, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI RSBM', 'IN_PROGRESS', 'IN_PROGRESS', 'Urgensi tiket disesuaikan menjadi MEDIUM oleh Rian Staf TI RSBM', '2026-10-24 13:50:36.094');
+INSERT INTO `ticket_timeline_logs` VALUES (72, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI RSBM', 'IN_PROGRESS', 'PENDING_PARTS', 'Menunggu ketersediaan sparepart.', '2026-10-24 13:50:43.035');
+INSERT INTO `ticket_timeline_logs` VALUES (73, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI RSBM', 'PENDING_PARTS', 'IN_PROGRESS', 'Part tersedia, lanjut pengerjaan.', '2026-10-24 13:50:50.165');
+INSERT INTO `ticket_timeline_logs` VALUES (74, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI RSBM', 'IN_PROGRESS', 'RESOLVED', 'asfdaf', '2026-10-24 13:50:53.906');
+INSERT INTO `ticket_timeline_logs` VALUES (75, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI RSBM', 'RESOLVED', 'RESOLVED', 'Urgensi tiket disesuaikan menjadi HIGH oleh Rian Staf TI RSBM', '2026-10-24 13:56:02.688');
+INSERT INTO `ticket_timeline_logs` VALUES (76, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI RSBM', 'RESOLVED', 'RESOLVED', 'Urgensi tiket disesuaikan menjadi EMERGENCY oleh Rian Staf TI RSBM', '2026-10-24 13:56:03.736');
+INSERT INTO `ticket_timeline_logs` VALUES (77, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI', 'RESOLVED', 'RESOLVED', 'Urgensi tiket disesuaikan menjadi MEDIUM oleh Rian Staf TI', '2026-10-24 15:23:56.678');
+INSERT INTO `ticket_timeline_logs` VALUES (78, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI', 'RESOLVED', 'RESOLVED', 'Urgensi tiket disesuaikan menjadi EMERGENCY oleh Rian Staf TI', '2026-10-24 15:23:57.749');
+INSERT INTO `ticket_timeline_logs` VALUES (79, 'b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', 'Rian Staf TI', 'RESOLVED', 'RESOLVED', 'Urgensi tiket disesuaikan menjadi HIGH oleh Rian Staf TI', '2026-10-24 15:24:02.664');
 
 -- ----------------------------
 -- Table structure for tickets
@@ -419,7 +514,7 @@ CREATE TABLE `tickets`  (
 INSERT INTO `tickets` VALUES ('0b7cb3f1-785b-43d8-b111-1005340d2949', 'TKT-20261024-0002', 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 1, 9, 'MEDIUM', 'RESOLVED', 'wifi mati di sini', '1a2ab84b-b8fb-4ef7-b32d-0cd9260c9ccb', '2026-10-24 04:20:21.489', '2026-10-24 04:20:51.826', '2026-10-24 04:21:49.319', '2026-10-24 04:22:40.782', NULL, 0, 1, 1, 2);
 INSERT INTO `tickets` VALUES ('143be0d7-6d1e-46cc-aa7d-7eb7cc538d7d', 'TKT-20261023-0005', 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 6, 7, 'MEDIUM', 'RESOLVED', 'Viewer DICOM PACS radiologi meminta update sertifikat SSL internal server RSBM.', '1a2ab84b-b8fb-4ef7-b32d-0cd9260c9ccb', '2026-10-23 14:57:19.080', NULL, NULL, NULL, NULL, 0, 9, 15, 24);
 INSERT INTO `tickets` VALUES ('2042bf3e-663e-4ff3-8fac-7c9b55b2879c', 'TKT-20261023-0003', 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 3, 8, 'HIGH', 'RESOLVED', 'Printer barcode etiket obat macet roll kertasnya. Antrean pasien rawat jalan mulai menumpuk.', '1a2ab84b-b8fb-4ef7-b32d-0cd9260c9ccb', '2026-10-23 14:57:19.077', NULL, NULL, NULL, NULL, 0, 6, 18, 24);
-INSERT INTO `tickets` VALUES ('281f1f85-58c2-4400-9597-c4244cf353cd', 'TKT-20261023-0004', 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 5, 6, 'EMERGENCY', 'IN_PROGRESS', 'Interfacing alat hematology analyzer gagal sinkronisasi otomatis ke modul Laboratorium SIMRS.', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', '2026-10-23 14:57:19.079', NULL, NULL, NULL, NULL, 0, 5, NULL, NULL);
+INSERT INTO `tickets` VALUES ('281f1f85-58c2-4400-9597-c4244cf353cd', 'TKT-20261023-0004', 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 5, 6, 'HIGH', 'RESOLVED', 'Interfacing alat hematology analyzer gagal sinkronisasi otomatis ke modul Laboratorium SIMRS.', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', '2026-10-23 14:57:19.079', NULL, NULL, '2026-10-24 13:49:44.639', NULL, 0, 5, 1372, 1372);
 INSERT INTO `tickets` VALUES ('2dd82474-7555-4ff5-b559-4d6187a953be', 'TKT-20261024-0004', 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 1, 7, 'LOW', 'RESOLVED', 'Gagal bridging BPJS V-Claim', '1a2ab84b-b8fb-4ef7-b32d-0cd9260c9ccb', '2026-10-24 04:49:38.522', '2026-10-24 04:50:11.434', '2026-10-24 04:50:16.167', '2026-10-24 04:50:38.620', NULL, 0, 1, 1, 1);
 INSERT INTO `tickets` VALUES ('5820936f-5594-4b10-92e9-ab0d5c9ee306', 'TKT-20261024-0005', 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 1, 6, 'MEDIUM', 'RESOLVED', 'SIMRS hang saat simpan rekam medis', '1a2ab84b-b8fb-4ef7-b32d-0cd9260c9ccb', '2026-10-24 04:51:16.113', '2026-10-24 04:51:36.644', '2026-10-24 04:51:58.226', '2026-10-24 04:52:00.664', NULL, 0, 1, 1, 1);
 INSERT INTO `tickets` VALUES ('5bde543a-0b35-4e7f-99e1-1bf356dccf03', 'TKT-20261023-0006', 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 9, 9, 'HIGH', 'RESOLVED', 'Access Point WiFi bangsal rawat inap Melati putus sambungan ke tablet visit dokter spesialis.', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', '2026-10-23 14:57:19.081', NULL, NULL, NULL, NULL, 0, 8, 14, 22);
@@ -427,6 +522,7 @@ INSERT INTO `tickets` VALUES ('6c8e0e6c-4b81-42c1-a2e3-bee2bbf3f030', 'TKT-20261
 INSERT INTO `tickets` VALUES ('786150d0-e242-4e13-9337-3f8a62c41122', 'TKT-20261023-0008', 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 10, 6, 'EMERGENCY', 'RESOLVED', 'Kwitansi pelunasan pasien rawat inap tidak muncul barcode verifikasi kasir.', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', '2026-10-23 14:57:19.084', NULL, NULL, NULL, NULL, 0, 5, 9, 14);
 INSERT INTO `tickets` VALUES ('7b192861-e566-4d8c-9751-3cbf8664f6b8', 'TKT-20261024-0001', 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 3, 6, 'MEDIUM', 'RESOLVED', 'saat input data di pengkajian awal keperawatan. muncul error ada kesalahan query', '1a2ab84b-b8fb-4ef7-b32d-0cd9260c9ccb', '2026-10-24 04:16:17.848', '2026-10-24 04:18:19.530', '2026-10-24 04:18:22.035', '2026-10-24 04:18:35.977', NULL, 0, 2, 1, 2);
 INSERT INTO `tickets` VALUES ('9a658513-d0f4-4002-8e57-6722cbc0ecce', 'TKT-20261023-0007', 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 7, 5, 'MEDIUM', 'RESOLVED', 'Mikrofon pemanggil antrean poliklinik suara berdegung keras. Menunggu kabel jack pengganti dari logistik.', '1a2ab84b-b8fb-4ef7-b32d-0cd9260c9ccb', '2026-10-23 14:57:19.083', '2026-10-23 15:36:44.459', '2026-10-24 04:17:04.718', '2026-10-24 04:17:31.543', NULL, 0, 39, 1, 800);
+INSERT INTO `tickets` VALUES ('b0903388-0271-49cf-ad6a-c50bcfdd9c79', 'TKT-20261024-0006', 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 1, 8, 'HIGH', 'RESOLVED', 'afwaefdwqd', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', '2026-10-24 13:49:55.118', '2026-10-24 13:50:19.752', '2026-10-24 13:50:26.683', '2026-10-24 13:50:53.905', NULL, 0, 1, 1, 1);
 INSERT INTO `tickets` VALUES ('b55fa85d-3000-422d-8395-ac02bc3fdd3c', 'TKT-20261024-0003', 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 1, 8, 'MEDIUM', 'RESOLVED', 'komputer mati ni', '1a2ab84b-b8fb-4ef7-b32d-0cd9260c9ccb', '2026-10-24 04:23:25.365', '2026-10-24 04:23:55.019', '2026-10-24 04:24:09.010', '2026-10-24 04:24:11.707', NULL, 0, 1, 1, 1);
 INSERT INTO `tickets` VALUES ('dfee677b-7be1-41ff-b62e-4387ae751b75', 'TKT-20261023-0009', 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 1, 7, 'EMERGENCY', 'RESOLVED', 'Permintaan instalasi shortcut sistem antrean triase IGD di komputer perawat 2.', '1a2ab84b-b8fb-4ef7-b32d-0cd9260c9ccb', '2026-10-23 14:57:19.085', '2026-10-24 04:50:54.424', '2026-10-24 04:51:00.017', '2026-10-24 04:51:03.253', NULL, 0, 834, 1, 834);
 INSERT INTO `tickets` VALUES ('e2ed07b9-5079-4c2f-9983-e28a02ba0a97', 'TKT-20261023-0002', 'ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 2, 8, 'EMERGENCY', 'RESOLVED', 'Monitor PC intra-operatif OK Bedah 2 blank saat pergantian pasien. Kabel konektor display longgar.', 'f1112edd-8bbd-4848-addd-7d52d81a62a0', '2026-10-23 14:57:19.076', NULL, NULL, NULL, NULL, 0, 4, 16, 20);
@@ -450,6 +546,7 @@ CREATE TABLE `users`  (
   `isActive` tinyint(1) NOT NULL DEFAULT 1,
   `createdAt` datetime(3) NOT NULL DEFAULT current_timestamp(3),
   `updatedAt` datetime(3) NOT NULL,
+  `avatarUrl` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `users_role_idx`(`role` ASC) USING BTREE,
   INDEX `users_departmentUnitId_idx`(`departmentUnitId` ASC) USING BTREE,
@@ -461,11 +558,11 @@ CREATE TABLE `users`  (
 -- ----------------------------
 -- Records of users
 -- ----------------------------
-INSERT INTO `users` VALUES ('106b5b33-676d-4d16-9ba7-46e851cd58d0', 'direksi', '197805152003121002', 'Manajemen', '08116000001', '', 'MANAGEMENT', '$2b$12$SsZdEtN0NIxisPxh3NvezuqL7PwegVTfydGP3z.WeJ7muRg5stzfO', 12, 0, NULL, 1, '2026-10-23 14:57:19.060', '2026-10-24 03:36:32.816');
-INSERT INTO `users` VALUES ('1a2ab84b-b8fb-4ef7-b32d-0cd9260c9ccb', 'operator', '199202022021021002', 'Operator Staf TI RSBM', '081234567891', '', 'IT_STAFF', '$2b$12$SsZdEtN0NIxisPxh3NvezuqL7PwegVTfydGP3z.WeJ7muRg5stzfO', 11, 0, NULL, 1, '2026-10-23 11:05:37.301', '2026-10-24 04:14:58.802');
-INSERT INTO `users` VALUES ('27032419-a496-4d91-b3c9-0e56884f5a10', 'manajemen', '197805152003121002', 'Manajemen', '08116000001', '', 'MANAGEMENT', '$2b$12$SsZdEtN0NIxisPxh3NvezuqL7PwegVTfydGP3z.WeJ7muRg5stzfO', 13, 0, NULL, 1, '2026-10-24 03:36:32.814', '2026-10-24 06:02:23.317');
-INSERT INTO `users` VALUES ('ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 'siti', '199704042023042004', 'Ns. Siti Rahma (Perawat IGD)', '081234567893', '', 'STAFF_USER', '$2b$12$SsZdEtN0NIxisPxh3NvezuqL7PwegVTfydGP3z.WeJ7muRg5stzfO', 1, 0, NULL, 1, '2026-10-23 11:05:37.303', '2026-10-24 13:28:50.417');
-INSERT INTO `users` VALUES ('d3bc3531-0abb-487c-a4c2-90d2d2535499', 'admin', '199001012020011001', 'Super Admin SIMRS', '081234567890', '', 'SUPERADMIN', '$2b$12$SsZdEtN0NIxisPxh3NvezuqL7PwegVTfydGP3z.WeJ7muRg5stzfO', 11, 0, NULL, 1, '2026-10-23 11:05:37.298', '2026-10-24 05:08:35.340');
-INSERT INTO `users` VALUES ('f1112edd-8bbd-4848-addd-7d52d81a62a0', 'rian', '199503032022031003', 'Rian Staf TI RSBM', '081234567892', '', 'IT_STAFF', '$2b$12$SsZdEtN0NIxisPxh3NvezuqL7PwegVTfydGP3z.WeJ7muRg5stzfO', 11, 0, NULL, 1, '2026-10-23 11:05:37.302', '2026-10-24 06:02:27.986');
+INSERT INTO `users` VALUES ('106b5b33-676d-4d16-9ba7-46e851cd58d0', 'direksi', '197805152003121002', 'Direksi', '08116000001', '', 'MANAGEMENT', '$2b$12$c3jkYKti.ezvu1SYFhKem.ff4T.wXDEoQM3UMLeHHH.bDJSb5Uzu6', 12, 0, NULL, 1, '2026-10-23 14:57:19.060', '2026-10-24 14:49:26.704', NULL);
+INSERT INTO `users` VALUES ('1a2ab84b-b8fb-4ef7-b32d-0cd9260c9ccb', 'operator', '199202022021021002', 'Operator Staf TI', '081234567891', '', 'IT_STAFF', '$2b$12$c3jkYKti.ezvu1SYFhKem.ff4T.wXDEoQM3UMLeHHH.bDJSb5Uzu6', 11, 0, NULL, 1, '2026-10-23 11:05:37.301', '2026-10-24 14:49:26.705', NULL);
+INSERT INTO `users` VALUES ('27032419-a496-4d91-b3c9-0e56884f5a10', 'manajemen', '197805152003121002', 'MENEJEMEN', '08116000001', '', 'MANAGEMENT', '$2b$12$c3jkYKti.ezvu1SYFhKem.ff4T.wXDEoQM3UMLeHHH.bDJSb5Uzu6', 13, 0, NULL, 1, '2026-10-24 03:36:32.814', '2026-10-24 15:53:04.020', NULL);
+INSERT INTO `users` VALUES ('ce3f8e68-4bee-41c4-9201-01d7ae6d8236', 'siti', '199704042023042004', 'Ns. Siti Rahma (Perawat IGD)', '081234567893', '', 'STAFF_USER', '$2b$12$c3jkYKti.ezvu1SYFhKem.ff4T.wXDEoQM3UMLeHHH.bDJSb5Uzu6', 1, 0, NULL, 1, '2026-10-23 11:05:37.303', '2026-10-24 15:23:32.915', NULL);
+INSERT INTO `users` VALUES ('d3bc3531-0abb-487c-a4c2-90d2d2535499', 'admin', '199001012020011001', 'Super Admin SIMRS', '081234567890', '', 'SUPERADMIN', '$2b$12$c3jkYKti.ezvu1SYFhKem.ff4T.wXDEoQM3UMLeHHH.bDJSb5Uzu6', 11, 0, NULL, 1, '2026-10-23 11:05:37.298', '2026-10-24 15:27:19.960', NULL);
+INSERT INTO `users` VALUES ('f1112edd-8bbd-4848-addd-7d52d81a62a0', 'rian', '199503032022031003', 'Rian Staf TI', '081234567892', '', 'IT_STAFF', '$2b$12$c3jkYKti.ezvu1SYFhKem.ff4T.wXDEoQM3UMLeHHH.bDJSb5Uzu6', 11, 0, NULL, 1, '2026-10-23 11:05:37.302', '2026-10-24 15:23:21.759', NULL);
 
 SET FOREIGN_KEY_CHECKS = 1;

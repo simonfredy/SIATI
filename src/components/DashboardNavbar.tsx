@@ -16,10 +16,17 @@ interface NavbarProps {
     role: Role;
     departmentUnitName?: string;
   };
+  hospitalName?: string;
+  hospitalLogo?: string | null;
   activeView?: "superadmin" | "management";
 }
 
-export default function DashboardNavbar({ user, activeView = "superadmin" }: NavbarProps) {
+export default function DashboardNavbar({
+  user,
+  hospitalName,
+  hospitalLogo,
+  activeView = "superadmin",
+}: NavbarProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -44,18 +51,28 @@ export default function DashboardNavbar({ user, activeView = "superadmin" }: Nav
   const badge = getRoleBadge(user.role);
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/90 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-white/10 px-3 sm:px-6 lg:px-8 py-3 shadow-sm dark:shadow-md transition-colors">
+    <header className="sticky top-0 z-40 w-full bg-white/90 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-white/10 px-3 sm:px-6 lg:px-8 py-3 shadow-sm dark:shadow-md transition-colors print:hidden">
       <div className="max-w-7xl xl:max-w-[1600px] mx-auto flex items-center justify-between gap-3">
         {/* Brand Identitas */}
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-sky-600/30 shrink-0">
-            <Activity className="w-5 h-5 sm:w-5 sm:h-5" />
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-sky-600/30 shrink-0 overflow-hidden">
+            {hospitalLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={hospitalLogo} alt={hospitalName || "Logo"} className="w-full h-full object-cover" />
+            ) : (
+              <Activity className="w-5 h-5 sm:w-5 sm:h-5" />
+            )}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               <span className="text-slate-900 dark:text-white font-bold text-sm sm:text-base tracking-wide whitespace-nowrap">
                 SIATI
               </span>
+              {hospitalName && (
+                <span className="hidden sm:inline-block text-xs font-semibold text-slate-500 dark:text-slate-400 border-l border-slate-300 dark:border-slate-700 pl-2 max-w-xs truncate">
+                  {hospitalName}
+                </span>
+              )}
               <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full border font-semibold whitespace-nowrap ${badge.color}`}>
                 {badge.label}
               </span>

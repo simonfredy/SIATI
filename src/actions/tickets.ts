@@ -207,6 +207,7 @@ export async function updateTicketStatusAction(data: {
   urgency?: TicketUrgency;
   notes?: string;
   assignedTechnicianId?: string;
+  silent?: boolean;
 }): Promise<ActionResult> {
   const user = await getCurrentUser();
   if (!user) {
@@ -218,7 +219,7 @@ export async function updateTicketStatusAction(data: {
     return { success: false, message: "Parameter status atau urgensi tidak valid." };
   }
 
-  const { ticketId, newStatus, urgency, notes, assignedTechnicianId } = validation.data;
+  const { ticketId, newStatus, urgency, notes, assignedTechnicianId, silent } = validation.data;
 
   try {
     const ticket = await prisma.ticket.findUnique({
@@ -309,7 +310,7 @@ export async function updateTicketStatusAction(data: {
             actorName: user.fullName,
             previousStatus: ticket.status,
             newStatus: finalStatus,
-            notes: notes || (urgency ? `Urgensi diset ke ${urgency}` : `Status diubah ke ${finalStatus}`),
+            notes: notes || (urgency && !newStatus ? "Penyesuaian tingkat urgensi layanan" : urgency ? `Urgensi diset ke ${urgency}` : `Status diubah ke ${finalStatus}`),
           },
         },
       },
@@ -319,25 +320,71 @@ export async function updateTicketStatusAction(data: {
     await prisma.systemAuditLog.create({
       data: {
         userId: user.userId,
-        action: urgency ? `TICKET_SET_URGENCY_${urgency}` : `TICKET_STATUS_${finalStatus}`,
+        action: urgency && !newStatus ? "TICKET_ADJUST_URGENCY" : urgency ? `TICKET_SET_URGENCY_${urgency}` : `TICKET_STATUS_${finalStatus}`,
         ipAddress: "127.0.0.1",
         userAgent: "Browser",
-        payload: { ticketNumber: ticket.ticketNumber, previousStatus: ticket.status, newStatus: finalStatus, urgency },
+        payload: { ticketNumber: ticket.ticketNumber, previousStatus: ticket.status, newStatus: finalStatus, urgency, silent },
       },
     });
 
     // Siarkan Pembaruan Status Real-Time (SSE)
-    broadcastRealtimeEvent({
-      type: finalStatus === TicketStatus.RESOLVED || finalStatus === TicketStatus.CLOSED ? "TICKET_RESOLVED" : "TICKET_UPDATED",
-      ticketId: ticket.id,
-      ticketNumber: ticket.ticketNumber,
-      status: finalStatus,
-      urgency: (urgency || ticket.urgency) as string,
-      technicianName: user.fullName,
-      title: finalStatus === TicketStatus.RESOLVED ? "Tiket Berhasil Diselesaikan" : "Pembaruan Status Tiket",
-      message: `[${ticket.ticketNumber}] Status: ${finalStatus} (${user.fullName})`,
-      timestamp: Date.now(),
-    });
+    // Sesuai aturan: Notifikasi HANYA untuk:
+    // 1. Yang menangani tiket (ASSIGNED)
+    // 2. Pergantian parts (PENDING_PARTS)
+    // 3. Tiket selesai (RESOLVED / CLOSED)
+    // Pergantian urgensi maupun perubahan status biasa TIDAK memunculkan notifikasi toast/audio.
+    if (!silent) {
+      if (newStatus === TicketStatus.ASSIGNED) {
+        broadcastRealtimeEvent({
+          type: "TICKET_ASSIGNED",
+          ticketId: ticket.id,
+          ticketNumber: ticket.ticketNumber,
+          status: newStatus,
+          urgency: (urgency || ticket.urgency) as string,
+          technicianName: user.fullName,
+          title: "Penugasan Staf TI",
+          message: `[${ticket.ticketNumber}] Tiket sedang ditangani oleh ${user.fullName}.`,
+          timestamp: Date.now(),
+        });
+      } else if (newStatus === TicketStatus.PENDING_PARTS) {
+        broadcastRealtimeEvent({
+          type: "TICKET_PENDING_PARTS",
+          ticketId: ticket.id,
+          ticketNumber: ticket.ticketNumber,
+          status: newStatus,
+          urgency: (urgency || ticket.urgency) as string,
+          technicianName: user.fullName,
+          title: "Menunggu Pergantian Suku Cadang",
+          message: `[${ticket.ticketNumber}] Tiket membutuhkan suku cadang/part pengganti (${user.fullName}).`,
+          timestamp: Date.now(),
+        });
+      } else if (newStatus === TicketStatus.RESOLVED || newStatus === TicketStatus.CLOSED) {
+        broadcastRealtimeEvent({
+          type: "TICKET_RESOLVED",
+          ticketId: ticket.id,
+          ticketNumber: ticket.ticketNumber,
+          status: newStatus,
+          urgency: (urgency || ticket.urgency) as string,
+          technicianName: user.fullName,
+          title: "Tiket Selesai Dikerjakan",
+          message: `[${ticket.ticketNumber}] Kendala fasilitas TI telah berhasil diselesaikan oleh ${user.fullName}.`,
+          timestamp: Date.now(),
+        });
+      } else {
+        // Untuk pergantian urgensi atau status pengerjaan biasa (IN_PROGRESS),
+        // hanya kirim event SYSTEM_UPDATE senyap agar data UI ter-refresh tanpa memicu notifikasi/suara
+        broadcastRealtimeEvent({
+          type: "SYSTEM_UPDATE",
+          ticketId: ticket.id,
+          ticketNumber: ticket.ticketNumber,
+          status: finalStatus,
+          urgency: (urgency || ticket.urgency) as string,
+          title: "Pembaruan Data",
+          message: `Tiket ${ticket.ticketNumber} diperbarui`,
+          timestamp: Date.now(),
+        });
+      }
+    }
 
     revalidatePath("/dashboard");
     return { success: true, message: "Tiket berhasil diperbarui." };

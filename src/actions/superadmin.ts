@@ -13,6 +13,23 @@ export interface ActionResult<T = unknown> {
   data?: T;
 }
 
+export interface HospitalProfileItem {
+  id: number;
+  name: string;
+  hospitalClass: string | null;
+  ownershipType: string | null;
+  phone: string | null;
+  email: string | null;
+  bpjsPpkCode: string | null;
+  kemenkesCode: string | null;
+  satuSehatId: string | null;
+  address: string | null;
+  logoUrl: string | null;
+  website: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 async function getClientIpAndUa() {
   const reqHeaders = await headers();
   const ipAddress =
@@ -41,6 +58,7 @@ export async function createUserAction(formData: FormData): Promise<ActionResult
   const role = (formData.get("role") as Role) || Role.STAFF_USER;
   const departmentUnitId = Number(formData.get("departmentUnitId"));
   const password = (formData.get("password") as string)?.trim() || "Password123!";
+  const avatarUrl = (formData.get("avatarUrl") as string)?.trim() || null;
 
   if (!username || username.length < 3) {
     return { success: false, message: "Username (nama depan) minimal 3 karakter." };
@@ -72,6 +90,7 @@ export async function createUserAction(formData: FormData): Promise<ActionResult
         fullName,
         nip,
         phoneNumber,
+        avatarUrl,
         role,
         departmentUnitId,
         passwordHash,
@@ -403,4 +422,130 @@ export async function updateCategorySlaAction(categoryId: number, newSlaMinutes:
     success: true,
     message: `Target SLA kategori '${updated.name}' diperbarui menjadi ${updated.targetSlaMinutes} menit.`,
   };
+}
+
+/**
+ * 7. Ambil Data Profil Rumah Sakit (Singleton)
+ */
+export async function getHospitalProfileAction() {
+  let profile = await prisma.hospitalProfile.findFirst();
+  if (!profile) {
+    profile = await prisma.hospitalProfile.create({
+      data: {
+        id: 1,
+        name: "Rumah Sakit Umum Daerah",
+        hospitalClass: "Kelas B",
+        ownershipType: "Pemerintah",
+        phone: "(021) 1234567",
+        email: "kontak@rumahsakit.co.id",
+        bpjsPpkCode: "0123R001",
+        kemenkesCode: "3171012",
+        satuSehatId: "org-1000001",
+        address: "Jl. Kesehatan Medika No. 1, Kota Medika",
+        logoUrl: null,
+        website: "https://rumahsakit.co.id",
+      },
+    });
+  }
+  return profile;
+}
+
+/**
+ * 8. Simpan / Perbarui Profil Rumah Sakit (Hanya Superadmin)
+ */
+export async function updateHospitalProfileAction(formData: FormData): Promise<ActionResult> {
+  const currentUser = await getCurrentUser();
+  if (!currentUser || currentUser.role !== Role.SUPERADMIN) {
+    return { success: false, message: "Akses ditolak. Tindakan ini membutuhkan hak akses SUPERADMIN." };
+  }
+
+  const { ipAddress, userAgent } = await getClientIpAndUa();
+
+  const name = (formData.get("name") as string)?.trim();
+  const hospitalClass = (formData.get("hospitalClass") as string)?.trim() || "Kelas B";
+  const ownershipType = (formData.get("ownershipType") as string)?.trim() || "Pemerintah";
+  const phone = (formData.get("phone") as string)?.trim() || "";
+  const email = (formData.get("email") as string)?.trim() || "";
+  const bpjsPpkCode = (formData.get("bpjsPpkCode") as string)?.trim() || null;
+  const kemenkesCode = (formData.get("kemenkesCode") as string)?.trim() || null;
+  const satuSehatId = (formData.get("satuSehatId") as string)?.trim() || null;
+  const address = (formData.get("address") as string)?.trim() || "";
+  const logoUrl = (formData.get("logoUrl") as string)?.trim() || null;
+  const website = (formData.get("website") as string)?.trim() || null;
+
+  if (!name || name.length < 3) {
+    return { success: false, message: "Nama rumah sakit wajib diisi minimal 3 karakter." };
+  }
+
+  if (!address || address.length < 5) {
+    return { success: false, message: "Alamat rumah sakit wajib diisi lengkap minimal 5 karakter." };
+  }
+
+  try {
+    const updated = await prisma.hospitalProfile.upsert({
+      where: { id: 1 },
+      update: {
+        name,
+        hospitalClass,
+        ownershipType,
+        phone,
+        email,
+        bpjsPpkCode,
+        kemenkesCode,
+        satuSehatId,
+        address,
+        logoUrl,
+        website,
+      },
+      create: {
+        id: 1,
+        name,
+        hospitalClass,
+        ownershipType,
+        phone,
+        email,
+        bpjsPpkCode,
+        kemenkesCode,
+        satuSehatId,
+        address,
+        logoUrl,
+        website,
+      },
+    });
+
+    await prisma.systemAuditLog.create({
+      data: {
+        userId: currentUser.userId,
+        action: "SUPERADMIN_UPDATE_HOSPITAL_PROFILE",
+        ipAddress,
+        userAgent,
+        payload: {
+          name: updated.name,
+          hospitalClass: updated.hospitalClass,
+          ownershipType: updated.ownershipType,
+          kemenkesCode: updated.kemenkesCode,
+        },
+      },
+    });
+
+    // Siarkan Event Pembaruan Profil Instansi (SSE)
+    broadcastRealtimeEvent({
+      type: "SYSTEM_UPDATE",
+      entity: "HOSPITAL_PROFILE",
+      title: "Profil Rumah Sakit Diperbarui",
+      message: `Identitas instansi '${updated.name}' berhasil diperbarui oleh Super Admin.`,
+      timestamp: Date.now(),
+    });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/");
+    return {
+      success: true,
+      message: `Profil dan identitas instansi '${updated.name}' berhasil disimpan!`,
+      data: updated,
+    };
+  } catch (error) {
+    console.error("Gagal menyimpan profil rumah sakit:", error);
+    return { success: false, message: "Terjadi kesalahan server saat menyimpan profil rumah sakit." };
+  }
 }

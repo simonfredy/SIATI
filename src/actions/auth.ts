@@ -11,6 +11,7 @@ export interface ActionResult<T = unknown> {
   message?: string;
   data?: T;
   fieldErrors?: Record<string, string>;
+  errorType?: "CAPTCHA_ERROR" | "CREDENTIALS_ERROR" | "ACCOUNT_LOCKED" | "GENERAL_ERROR";
 }
 
 export async function loginAction(formData: FormData): Promise<ActionResult> {
@@ -40,6 +41,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
       success: false,
       message: "Data input login tidak valid.",
       fieldErrors,
+      errorType: "GENERAL_ERROR",
     };
   }
 
@@ -50,8 +52,9 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
   if (!captchaCheck.success) {
     return {
       success: false,
-      message: captchaCheck.error || "Validasi CAPTCHA gagal. Silakan ulangi.",
-      fieldErrors: { captchaAnswer: captchaCheck.error || "Jawaban salah" },
+      message: captchaCheck.error || "Kode CAPTCHA yang Anda masukkan salah atau sudah kedaluwarsa.",
+      fieldErrors: { captchaAnswer: captchaCheck.error || "Kode CAPTCHA salah atau kedaluwarsa." },
+      errorType: "CAPTCHA_ERROR",
     };
   }
 
@@ -79,7 +82,12 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
 
     return {
       success: false,
-      message: "Username atau Password yang Anda masukkan salah.",
+      message: "Username atau Kata Sandi yang Anda masukkan salah.",
+      fieldErrors: {
+        username: "Username atau kata sandi tidak cocok.",
+        password: "Username atau kata sandi tidak cocok.",
+      },
+      errorType: "CREDENTIALS_ERROR",
     };
   }
 
@@ -87,7 +95,11 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
   if (!user.isActive) {
     return {
       success: false,
-      message: "Akun ini telah dinonaktifkan. Hubungi Tim SIMRS.",
+      message: "Akun ini telah dinonaktifkan. Hubungi Tim TI.",
+      fieldErrors: {
+        username: "Akun ini telah dinonaktifkan.",
+      },
+      errorType: "GENERAL_ERROR",
     };
   }
 
@@ -96,6 +108,11 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
     return {
       success: false,
       message: `Akun terkunci sementara karena 5x gagal login. Coba lagi dalam ${minutesLeft} menit.`,
+      fieldErrors: {
+        username: "Akun sedang terkunci sementara.",
+        password: "Akun sedang terkunci sementara.",
+      },
+      errorType: "ACCOUNT_LOCKED",
     };
   }
 
@@ -128,12 +145,26 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
       },
     });
 
+    if (updatedFailedCount >= 5) {
+      return {
+        success: false,
+        message: "Akun ini terkunci sementara selama 15 menit akibat 5x percobaan gagal.",
+        fieldErrors: {
+          username: "Akun terkunci sementara.",
+          password: "Akun terkunci sementara.",
+        },
+        errorType: "ACCOUNT_LOCKED",
+      };
+    }
+
     return {
       success: false,
-      message:
-        updatedFailedCount >= 5
-          ? "Akun Anda terkunci selama 15 menit akibat 5x salah password."
-          : `Password salah (${updatedFailedCount}/5 percobaan).`,
+      message: "Username atau Kata Sandi yang Anda masukkan salah.",
+      fieldErrors: {
+        username: "Username atau kata sandi salah.",
+        password: "Username atau kata sandi salah.",
+      },
+      errorType: "CREDENTIALS_ERROR",
     };
   }
 

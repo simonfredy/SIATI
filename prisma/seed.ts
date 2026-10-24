@@ -78,32 +78,12 @@ async function main() {
     {
       username: "manajemen",
       nip: "197805152003121002",
-      fullName: "dr. Martinus Ginting, Sp.P (Manajemen)",
+      fullName: "MANAJEMEN",
       phoneNumber: "08116000001",
       telegramChatId: "",
       role: Role.MANAGEMENT,
       passwordHash: defaultPasswordHash,
       departmentUnitId: manajemenUnit?.id || itUnit!.id,
-    },
-    {
-      username: "direksi",
-      nip: "197805152003121002",
-      fullName: "dr. Martinus Ginting, Sp.P (Manajemen)",
-      phoneNumber: "08116000001",
-      telegramChatId: "",
-      role: Role.MANAGEMENT,
-      passwordHash: defaultPasswordHash,
-      departmentUnitId: manajemenUnit?.id || itUnit!.id,
-    },
-    {
-      username: "operator",
-      nip: "199202022021021002",
-      fullName: "Operator Staf TI",
-      phoneNumber: "081234567891",
-      telegramChatId: "",
-      role: Role.IT_STAFF,
-      passwordHash: defaultPasswordHash,
-      departmentUnitId: itUnit!.id,
     },
     {
       username: "rian",
@@ -323,6 +303,27 @@ async function main() {
     }
     console.log("✅ 9 Tiket percontohan realistis & ulasan kepuasan nakes berhasil di-generate.");
   }
+
+  // 6. Buat Profil Rumah Sakit Awal
+  await prisma.hospitalProfile.upsert({
+    where: { id: 1 },
+    update: {},
+    create: {
+      id: 1,
+      name: "Rumah Sakit Umum Daerah",
+      hospitalClass: "Kelas B",
+      ownershipType: "Pemerintah",
+      phone: "(021) 1234567",
+      email: "kontak@rumahsakit.co.id",
+      bpjsPpkCode: "0123R001",
+      kemenkesCode: "3171012",
+      satuSehatId: "org-1000001",
+      address: "Jl. Kesehatan Medika No. 1, Kota Medika",
+      logoUrl: null,
+      website: "https://rumahsakit.co.id",
+    },
+  });
+  console.log("✅ Profil & Identitas Rumah Sakit berhasil disiapkan.");
 
   console.log("✨ Seeding selesai!");
 }

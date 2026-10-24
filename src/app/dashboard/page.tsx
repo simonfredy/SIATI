@@ -13,6 +13,7 @@ import SuperadminView, {
 import ManagementView, {
   ManagementTicketItem,
 } from "@/components/ManagementView";
+import { getHospitalProfileAction } from "@/actions/superadmin";
 
 export const instant = false;
 
@@ -122,6 +123,9 @@ export default async function DashboardPage({
     redirect("/");
   }
 
+  // Ambil profil resmi instansi rumah sakit (singleton)
+  const hospitalProfile = await getHospitalProfileAction();
+
   // 1. Jika Role adalah Pelapor Medis / Nakes (STAFF_USER)
   if (user.role === Role.STAFF_USER) {
     const rawTickets = await prisma.ticket.findMany({
@@ -169,6 +173,8 @@ export default async function DashboardPage({
             role: user.role,
             departmentUnitName: user.departmentUnit?.name,
           }}
+          hospitalName={hospitalProfile?.name}
+          hospitalLogo={hospitalProfile?.logoUrl}
         />
         <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
           <ReporterView tickets={tickets} userName={user.fullName} unitName={user.departmentUnit?.name || "Unit RS"} />
@@ -193,10 +199,12 @@ export default async function DashboardPage({
               departmentUnitName: user.departmentUnit?.name,
             }}
             activeView="management"
+            hospitalName={hospitalProfile?.name}
+            hospitalLogo={hospitalProfile?.logoUrl}
           />
-          <main className="flex-1 max-w-7xl xl:max-w-[1600px] w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
+          <main className="flex-1 max-w-7xl xl:max-w-[1600px] w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7 print:p-0 print:m-0 print:max-w-none print:w-full">
             {/* Banner Otoritas Superadmin di Portal Manajemen */}
-            <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 text-white border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+            <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 text-white border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg print:hidden">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center shrink-0 border border-purple-400/30">
                   <Shield className="w-5 h-5 text-purple-300" />
@@ -228,6 +236,7 @@ export default async function DashboardPage({
               categories={mgmtData.categories}
               technicians={mgmtData.technicians}
               currentUserName={user.fullName}
+              hospitalProfile={hospitalProfile}
             />
           </main>
         </div>
@@ -287,6 +296,7 @@ export default async function DashboardPage({
       fullName: u.fullName,
       nip: u.nip,
       phoneNumber: u.phoneNumber,
+      avatarUrl: u.avatarUrl,
       role: u.role,
       isActive: u.isActive,
       departmentUnitId: u.departmentUnitId,
@@ -342,6 +352,8 @@ export default async function DashboardPage({
             departmentUnitName: user.departmentUnit?.name,
           }}
           activeView="superadmin"
+          hospitalName={hospitalProfile?.name}
+          hospitalLogo={hospitalProfile?.logoUrl}
         />
         <main className="flex-1 max-w-7xl xl:max-w-[1600px] w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
           <SuperadminView
@@ -354,6 +366,7 @@ export default async function DashboardPage({
             currentUserId={user.id}
             currentUserName={user.fullName}
             currentUserRole={user.role}
+            hospitalProfile={hospitalProfile}
           />
         </main>
       </div>
@@ -375,14 +388,17 @@ export default async function DashboardPage({
             departmentUnitName: user.departmentUnit?.name,
           }}
           activeView="management"
+          hospitalName={hospitalProfile?.name}
+          hospitalLogo={hospitalProfile?.logoUrl}
         />
-        <main className="flex-1 max-w-7xl xl:max-w-[1600px] w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
+        <main className="flex-1 max-w-7xl xl:max-w-[1600px] w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7 print:p-0 print:m-0 print:max-w-none print:w-full">
           <ManagementView
             tickets={mgmtData.tickets}
             units={mgmtData.units}
             categories={mgmtData.categories}
             technicians={mgmtData.technicians}
             currentUserName={user.fullName}
+            hospitalProfile={hospitalProfile}
           />
         </main>
       </div>
@@ -442,6 +458,8 @@ export default async function DashboardPage({
           role: user.role,
           departmentUnitName: user.departmentUnit?.name,
         }}
+        hospitalName={hospitalProfile?.name}
+        hospitalLogo={hospitalProfile?.logoUrl}
       />
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
         <ITStaffUnifiedView

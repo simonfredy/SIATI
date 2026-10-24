@@ -2,8 +2,10 @@ import { EventEmitter } from "events";
 
 export type RealtimeEventType =
   | "TICKET_CREATED"
-  | "TICKET_UPDATED"
+  | "TICKET_ASSIGNED"
+  | "TICKET_PENDING_PARTS"
   | "TICKET_RESOLVED"
+  | "TICKET_UPDATED"
   | "TICKET_RATED"
   | "SYSTEM_UPDATE";
 
