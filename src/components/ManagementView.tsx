@@ -26,8 +26,20 @@ import {
   Lightbulb,
   FileText,
   RotateCcw,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { TicketStatus, TicketUrgency } from "@prisma/client";
+import { motion, AnimatePresence } from "motion/react";
+import AnimatedCounter from "@/components/AnimatedCounter";
+import {
+  staggerContainerVariants,
+  cardItemVariants,
+  tabContentVariants,
+  modalBackdropVariants,
+  modalContentVariants,
+  interactiveCardHover,
+} from "@/lib/motionVariants";
 
 export interface ManagementTicketItem {
   id: string;
@@ -171,6 +183,32 @@ export default function ManagementView({
   const [activeTab, setActiveTab] = useState<
     "overview" | "technicians" | "tickets" | "recommendations"
   >("overview");
+
+  // Expand-Collapse State untuk Sidebar Tablet & Laptop / PC
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("siati_mgmt_sidebar_collapsed");
+      if (saved !== null) {
+        setIsSidebarCollapsed(saved === "true");
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("siati_mgmt_sidebar_collapsed", String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
 
   // ========================================================
   // 1. RENTANG WAKTU PER TANGGAL UNTUK 6 KARTU KPI ATAS
@@ -974,9 +1012,312 @@ export default function ManagementView({
       </div>
 
       {/* ======================================================== */}
-      {/* 2. EXECUTIVE HERO BANNER */}
+      {/* 2. TATA LETAK UTAMA DASHBOARD DENGAN EXPANDABLE SIDEBAR */}
       {/* ======================================================== */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-900 text-white p-5 sm:p-7 shadow-xl border border-white/10 print:hidden">
+      <div className="flex flex-col md:flex-row items-start gap-4 lg:gap-6">
+        {/* ======================================================== */}
+        {/* SIDEBAR NAVIGASI (TABLET & LAPTOP/PC) EXPANDABLE/COLLAPSIBLE */}
+        {/* ======================================================== */}
+        <aside
+          className={`hidden md:flex flex-col sticky top-20 shrink-0 transition-all duration-300 ease-in-out print:hidden ${
+            isSidebarCollapsed ? "w-18 lg:w-20" : "w-64 lg:w-72"
+          }`}
+        >
+          <div className="w-full p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm space-y-3">
+            {/* Header Sidebar with Title & Collapse Toggle Button */}
+            <div
+              className={`pb-3 border-b border-slate-100 dark:border-white/10 flex items-center ${
+                isSidebarCollapsed
+                  ? "justify-center flex-col gap-2"
+                  : "justify-between"
+              }`}
+            >
+              {!isSidebarCollapsed ? (
+                <>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 block truncate">
+                      Navigasi Menu
+                    </span>
+                    <div className="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5 truncate">
+                      Portal Manajemen
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleSidebar}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+                    title="Ciutkan Menu Navigasi"
+                  >
+                    <PanelLeftClose className="w-4 h-4" />
+                  </button>
+                </>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleSidebar}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    title="Perluas Menu Navigasi"
+                  >
+                    <PanelLeftOpen className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Menu Items */}
+            <nav className="space-y-1.5">
+              {/* Menu 1: overview */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("overview")}
+                title={
+                  isSidebarCollapsed
+                    ? `Ikhtisar & Heatmap (${tab1Tickets.length} Tiket)`
+                    : undefined
+                }
+                className={`w-full rounded-xl transition-all flex items-center group ${
+                  isSidebarCollapsed
+                    ? "justify-center p-2.5"
+                    : "justify-between p-2.5"
+                } ${
+                  activeTab === "overview"
+                    ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold shadow-sm"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors relative ${
+                      activeTab === "overview"
+                        ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-amber-500"
+                    }`}
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    {isSidebarCollapsed && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900" />
+                    )}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <div className="min-w-0 text-left">
+                      <div className="text-xs truncate">Ikhtisar & Heatmap</div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        5 Pilar & Ruangan RS
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span
+                    className={`text-[11px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                      activeTab === "overview"
+                        ? "bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
+                    {tab1Tickets.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Menu 2: technicians */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("technicians")}
+                title={
+                  isSidebarCollapsed
+                    ? `Kinerja Staf TI (${technicians.length} Staf)`
+                    : undefined
+                }
+                className={`w-full rounded-xl transition-all flex items-center group ${
+                  isSidebarCollapsed
+                    ? "justify-center p-2.5"
+                    : "justify-between p-2.5"
+                } ${
+                  activeTab === "technicians"
+                    ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold shadow-sm"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors relative ${
+                      activeTab === "technicians"
+                        ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-amber-500"
+                    }`}
+                  >
+                    <Award className="w-4 h-4" />
+                    {isSidebarCollapsed && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900" />
+                    )}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <div className="min-w-0 text-left">
+                      <div className="text-xs truncate">Kinerja Staf TI</div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        Scorecard SKP & TPP
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span
+                    className={`text-[11px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                      activeTab === "technicians"
+                        ? "bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
+                    {technicians.length} Staf
+                  </span>
+                )}
+              </button>
+
+              {/* Menu 3: tickets */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("tickets")}
+                title={
+                  isSidebarCollapsed
+                    ? `Audit Rekapitulasi (${tab3FilteredTickets.length} Tiket)`
+                    : undefined
+                }
+                className={`w-full rounded-xl transition-all flex items-center group ${
+                  isSidebarCollapsed
+                    ? "justify-center p-2.5"
+                    : "justify-between p-2.5"
+                } ${
+                  activeTab === "tickets"
+                    ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold shadow-sm"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors relative ${
+                      activeTab === "tickets"
+                        ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-amber-500"
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    {isSidebarCollapsed && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900" />
+                    )}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <div className="min-w-0 text-left">
+                      <div className="text-xs truncate">Audit Rekapitulasi</div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        Presisi menit & SLA
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span
+                    className={`text-[11px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                      activeTab === "tickets"
+                        ? "bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
+                    {tab3FilteredTickets.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Menu 4: recommendations */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("recommendations")}
+                title={
+                  isSidebarCollapsed
+                    ? "Rekomendasi Aset TI (Strategis)"
+                    : undefined
+                }
+                className={`w-full rounded-xl transition-all flex items-center group ${
+                  isSidebarCollapsed
+                    ? "justify-center p-2.5"
+                    : "justify-between p-2.5"
+                } ${
+                  activeTab === "recommendations"
+                    ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold shadow-sm"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors relative ${
+                      activeTab === "recommendations"
+                        ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-amber-500"
+                    }`}
+                  >
+                    <Lightbulb className="w-4 h-4" />
+                    {isSidebarCollapsed && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900" />
+                    )}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <div className="min-w-0 text-left">
+                      <div className="text-xs truncate">Rekomendasi Aset TI</div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        Wawasan belanja & alat
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 shrink-0">
+                    Strategis
+                  </span>
+                )}
+              </button>
+            </nav>
+
+            {/* Sidebar quick actions & info */}
+            {!isSidebarCollapsed ? (
+              <div className="pt-3 border-t border-slate-100 dark:border-white/10 space-y-2">
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span>Standar SLA:</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                      ≥ 90.0%
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Target MTTA:</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">
+                      &lt; 15 Menit
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="pt-2 border-t border-slate-100 dark:border-white/10 flex justify-center">
+                <div
+                  className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"
+                  title="Standar Mutu: SLA ≥ 90.0%, MTTA < 15 m"
+                />
+              </div>
+            )}
+          </div>
+        </aside>
+
+        {/* ======================================================== */}
+        {/* AREA UTAMA DASHBOARD DI SEBELAH KANAN SIDEBAR */}
+        {/* ======================================================== */}
+        <div className="flex-1 min-w-0 w-full space-y-6">
+          {/* ======================================================== */}
+          {/* 2. EXECUTIVE HERO BANNER */}
+          {/* ======================================================== */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-900 text-white p-5 sm:p-7 shadow-xl border border-white/10 print:hidden">
         {/* Decorative Ambient Circles */}
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute bottom-0 left-1/3 -mb-10 w-48 h-48 bg-sky-500/15 rounded-full blur-2xl pointer-events-none"></div>
@@ -986,7 +1327,7 @@ export default function ManagementView({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                Portal Eksekutif Karumkit & Direksi
+                Portal Eksekutif Manajemen
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white/10 text-slate-200">
                 <Calendar className="w-3.5 h-3.5 text-sky-400" />
@@ -1104,9 +1445,18 @@ export default function ManagementView({
       {/* ======================================================== */}
       {/* 3. EXECUTIVE SCORECARD (6 KPI CARDS) */}
       {/* ======================================================== */}
-      <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+      <motion.div
+        variants={staggerContainerVariants}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4"
+      >
         {/* Card 1: Total Tiket */}
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={interactiveCardHover}
+          className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
               Total Aduan
@@ -1117,7 +1467,7 @@ export default function ManagementView({
           </div>
           <div className="mt-2">
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-              {kpis.total}
+              <AnimatedCounter value={kpis.total} />
             </div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
               <span className="font-semibold text-emerald-600 dark:text-emerald-400">
@@ -1129,10 +1479,14 @@ export default function ManagementView({
               </span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 2: Kepatuhan SLA (%) */}
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={interactiveCardHover}
+          className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
               Kepatuhan SLA
@@ -1143,7 +1497,7 @@ export default function ManagementView({
           </div>
           <div className="mt-2">
             <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">
-              {kpis.slaComplianceRate}%
+              <AnimatedCounter value={kpis.slaComplianceRate} decimals={1} suffix="%" />
             </div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
               Target RSBM: <span className="font-semibold">≥ 90.0%</span>
@@ -1157,10 +1511,14 @@ export default function ManagementView({
               ></div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 3: MTTA (Rata-rata Respon) */}
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={interactiveCardHover}
+          className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
               MTTA (Respon)
@@ -1171,19 +1529,20 @@ export default function ManagementView({
           </div>
           <div className="mt-2">
             <div className="text-2xl sm:text-3xl font-extrabold text-sky-600 dark:text-sky-400">
-              {kpis.mtta}{" "}
-              <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                mnt
-              </span>
+              <AnimatedCounter value={kpis.mtta} decimals={1} suffix=" mnt" />
             </div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
               Tiket dibuat ➔ Teknisi respon
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 4: MTTR (Rata-rata Perbaikan) */}
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={interactiveCardHover}
+          className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
               MTTR (Perbaikan)
@@ -1194,19 +1553,20 @@ export default function ManagementView({
           </div>
           <div className="mt-2">
             <div className="text-2xl sm:text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">
-              {kpis.mttr}{" "}
-              <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                mnt
-              </span>
+              <AnimatedCounter value={kpis.mttr} decimals={1} suffix=" mnt" />
             </div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
               Stopwatch kerja teknisi
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 5: Kepuasan Layanan (CSAT) */}
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={interactiveCardHover}
+          className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
               Indeks Kepuasan
@@ -1217,19 +1577,20 @@ export default function ManagementView({
           </div>
           <div className="mt-2">
             <div className="text-2xl sm:text-3xl font-extrabold text-amber-500">
-              {kpis.csat}{" "}
-              <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                / 5.0
-              </span>
+              <AnimatedCounter value={kpis.csat} decimals={1} suffix=" / 5.0" />
             </div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
               Dari {kpis.ratedCount} ulasan nakes
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Card 6: Insiden Emergency (P1) */}
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between">
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={interactiveCardHover}
+          className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col justify-between"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
               Kritis (P1)
@@ -1240,256 +1601,80 @@ export default function ManagementView({
           </div>
           <div className="mt-2">
             <div className="text-2xl sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400">
-              {kpis.emergencyP1Count}
+              <AnimatedCounter value={kpis.emergencyP1Count} />
             </div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
               Pelayanan darurat (IGD/OK)
             </div>
           </div>
-        </div>
+        </motion.div>
+      </motion.div>
+
+      {/* ======================================================== */}
+      {/* 4. MOBILE HORIZONTAL TABS (Hanya muncul di Ponsel Layar Kecil < md) */}
+      {/* ======================================================== */}
+      <div className="md:hidden flex items-center gap-1 sm:gap-2 border-b border-slate-200 dark:border-white/10 overflow-x-auto pb-1 text-sm font-semibold print:hidden mb-2">
+        <button
+          onClick={() => setActiveTab("overview")}
+          className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-t-xl transition-all whitespace-nowrap border-b-2 ${
+            activeTab === "overview"
+              ? "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20"
+              : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span>Ikhtisar & Heatmap Ruangan</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("technicians")}
+          className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-t-xl transition-all whitespace-nowrap border-b-2 ${
+            activeTab === "technicians"
+              ? "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20"
+              : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+          }`}
+        >
+          <Award className="w-4 h-4" />
+          <span>Matriks Kinerja Staf TI ({technicians.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("tickets")}
+          className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-t-xl transition-all whitespace-nowrap border-b-2 ${
+            activeTab === "tickets"
+              ? "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20"
+              : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Audit Rekapitulasi Tiket ({tab3FilteredTickets.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("recommendations")}
+          className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-t-xl transition-all whitespace-nowrap border-b-2 ${
+            activeTab === "recommendations"
+              ? "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20"
+              : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+          }`}
+        >
+          <Lightbulb className="w-4 h-4" />
+          <span>Rekomendasi Manajerial & Aset TI</span>
+        </button>
       </div>
-
-      {/* ======================================================== */}
-      {/* 4. TATA LETAK DUA KOLOM DENGAN SIDEBAR NAVIGASI PADA TABLET & LAPTOP */}
-      {/* ======================================================== */}
-      <div className="md:grid md:grid-cols-12 md:gap-6 items-start">
-        {/* SIDEBAR NAVIGATION (Muncul di Layar Tablet & Laptop / Desktop >= md) */}
-        <aside className="hidden md:block md:col-span-4 lg:col-span-3 sticky top-20 space-y-4 print:hidden">
-          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm space-y-3">
-            {/* Header Sidebar */}
-            <div className="pb-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
-                  Navigasi Pimpinan
-                </span>
-                <div className="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5">
-                  Portal Direksi & Karumkit
-                </div>
-              </div>
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-4 h-4" />
-              </div>
-            </div>
-
-            {/* Menu Items */}
-            <nav className="space-y-1.5">
-              {/* Menu 1: overview */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("overview")}
-                className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between group ${
-                  activeTab === "overview"
-                    ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold shadow-sm"
-                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                      activeTab === "overview"
-                        ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-amber-500"
-                    }`}
-                  >
-                    <BarChart3 className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs truncate">Ikhtisar & Heatmap</div>
-                    <div className="text-[10px] text-slate-400 truncate">5 Pilar & Ruangan RS</div>
-                  </div>
-                </div>
-                <span
-                  className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
-                    activeTab === "overview"
-                      ? "bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                  }`}
-                >
-                  {tab1Tickets.length}
-                </span>
-              </button>
-
-              {/* Menu 2: technicians */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("technicians")}
-                className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between group ${
-                  activeTab === "technicians"
-                    ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold shadow-sm"
-                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                      activeTab === "technicians"
-                        ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-amber-500"
-                    }`}
-                  >
-                    <Award className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs truncate">Kinerja Staf TI</div>
-                    <div className="text-[10px] text-slate-400 truncate">Scorecard SKP & TPP</div>
-                  </div>
-                </div>
-                <span
-                  className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
-                    activeTab === "technicians"
-                      ? "bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                  }`}
-                >
-                  {technicians.length} Staf
-                </span>
-              </button>
-
-              {/* Menu 3: tickets */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("tickets")}
-                className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between group ${
-                  activeTab === "tickets"
-                    ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold shadow-sm"
-                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                      activeTab === "tickets"
-                        ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-amber-500"
-                    }`}
-                  >
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs truncate">Audit Rekapitulasi</div>
-                    <div className="text-[10px] text-slate-400 truncate">Presisi menit & SLA</div>
-                  </div>
-                </div>
-                <span
-                  className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
-                    activeTab === "tickets"
-                      ? "bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                  }`}
-                >
-                  {tab3FilteredTickets.length}
-                </span>
-              </button>
-
-              {/* Menu 4: recommendations */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("recommendations")}
-                className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between group ${
-                  activeTab === "recommendations"
-                    ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold shadow-sm"
-                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                      activeTab === "recommendations"
-                        ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-amber-500"
-                    }`}
-                  >
-                    <Lightbulb className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs truncate">Rekomendasi Aset TI</div>
-                    <div className="text-[10px] text-slate-400 truncate">Wawasan belanja & alat</div>
-                  </div>
-                </div>
-                <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                  Strategis
-                </span>
-              </button>
-            </nav>
-
-            {/* Sidebar quick actions & info */}
-            <div className="pt-3 border-t border-slate-100 dark:border-white/10 space-y-2">
-              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span>Standar SLA:</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                    ≥ 90.0%
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Target MTTA:</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">
-                    &lt; 15 Menit
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        {/* MOBILE HORIZONTAL TABS (Hanya muncul di Ponsel Layar Kecil < md) */}
-        <div className="md:hidden flex items-center gap-1 sm:gap-2 border-b border-slate-200 dark:border-white/10 overflow-x-auto pb-1 text-sm font-semibold print:hidden mb-4">
-          <button
-            onClick={() => setActiveTab("overview")}
-            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-t-xl transition-all whitespace-nowrap border-b-2 ${
-              activeTab === "overview"
-                ? "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20"
-                : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" />
-            <span>Ikhtisar & Heatmap Ruangan</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("technicians")}
-            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-t-xl transition-all whitespace-nowrap border-b-2 ${
-              activeTab === "technicians"
-                ? "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20"
-                : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-            }`}
-          >
-            <Award className="w-4 h-4" />
-            <span>Matriks Kinerja Staf TI ({technicians.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("tickets")}
-            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-t-xl transition-all whitespace-nowrap border-b-2 ${
-              activeTab === "tickets"
-                ? "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20"
-                : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>Audit Rekapitulasi Tiket ({tab3FilteredTickets.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("recommendations")}
-            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-t-xl transition-all whitespace-nowrap border-b-2 ${
-              activeTab === "recommendations"
-                ? "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20"
-                : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-            }`}
-          >
-            <Lightbulb className="w-4 h-4" />
-            <span>Rekomendasi Manajerial & Aset TI</span>
-          </button>
-        </div>
-
-        {/* AREA KONTEN UTAMA DENGAN LEBAR OPTIMAL */}
-        <main className="md:col-span-8 lg:col-span-9 space-y-5">
 
       {/* ======================================================== */}
       {/* 5. TAB 1: OVERVIEW & HEATMAP */}
       {/* ======================================================== */}
-      {activeTab === "overview" && (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          variants={tabContentVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+        >
+          {activeTab === "overview" && (
         <div className="space-y-4">
           {/* Filter Tanggal Tab 1 */}
           {renderDateFilterBar(
@@ -2234,15 +2419,30 @@ export default function ManagementView({
           </div>
         </div>
       )}
-        </main>
+        </motion.div>
+      </AnimatePresence>
+        </div>
       </div>
 
       {/* ======================================================== */}
       {/* 9. MODAL DETAIL AUDIT TIKET (DRILL DOWN) */}
       {/* ======================================================== */}
-      {selectedTicket && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <AnimatePresence>
+        {selectedTicket && (
+          <motion.div
+            variants={modalBackdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm"
+          >
+            <motion.div
+              variants={modalContentVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
             {/* Modal Header */}
             <div className="px-5 py-4 border-b border-slate-200 dark:border-white/10 flex items-center justify-between bg-slate-50 dark:bg-slate-800/60">
               <div className="flex items-center gap-2">
@@ -2389,9 +2589,10 @@ export default function ManagementView({
                 Tutup
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+    </AnimatePresence>
     </div>
   );
 }

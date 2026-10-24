@@ -5,6 +5,7 @@ import { getCurrentUser, hashPassword } from "@/lib/auth";
 import { Role } from "@prisma/client";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { broadcastRealtimeEvent } from "@/lib/realtime";
 
 export interface ActionResult<T = unknown> {
   success: boolean;
@@ -93,6 +94,15 @@ export async function createUserAction(formData: FormData): Promise<ActionResult
       },
     });
 
+    // Siarkan Event Pembaruan Master User (SSE)
+    broadcastRealtimeEvent({
+      type: "SYSTEM_UPDATE",
+      entity: "USER",
+      title: "Pengguna Baru Terdaftar",
+      message: `Pengguna '${fullName}' (@${username}) berhasil didaftarkan.`,
+      timestamp: Date.now(),
+    });
+
     revalidatePath("/dashboard");
     return { success: true, message: `Pengguna '${fullName}' (${username}) berhasil didaftarkan.` };
   } catch (err: unknown) {
@@ -149,6 +159,15 @@ export async function toggleUserStatusAction(userId: string): Promise<ActionResu
     },
   });
 
+  // Siarkan Event Perubahan Status User (SSE)
+  broadcastRealtimeEvent({
+    type: "SYSTEM_UPDATE",
+    entity: "USER",
+    title: "Status Akun Berubah",
+    message: `Akun '${targetUser.fullName}' diubah menjadi ${newStatus ? "Aktif" : "Nonaktif"}.`,
+    timestamp: Date.now(),
+  });
+
   revalidatePath("/dashboard");
   return {
     success: true,
@@ -200,6 +219,15 @@ export async function resetUserPasswordAction(userId: string): Promise<ActionRes
     },
   });
 
+  // Siarkan Event Reset Password (SSE)
+  broadcastRealtimeEvent({
+    type: "SYSTEM_UPDATE",
+    entity: "USER",
+    title: "Kata Sandi Direset",
+    message: `Kata sandi akun '${targetUser.fullName}' telah direset.`,
+    timestamp: Date.now(),
+  });
+
   revalidatePath("/dashboard");
   return {
     success: true,
@@ -248,6 +276,15 @@ export async function createDepartmentUnitAction(formData: FormData): Promise<Ac
         buildingZone: newUnit.buildingZone,
       },
     },
+  });
+
+  // Siarkan Event Unit Baru (SSE)
+  broadcastRealtimeEvent({
+    type: "SYSTEM_UPDATE",
+    entity: "UNIT",
+    title: "Master Ruangan / Unit Ditambahkan",
+    message: `Unit '${newUnit.name}' (${newUnit.buildingZone}) berhasil ditambahkan.`,
+    timestamp: Date.now(),
   });
 
   revalidatePath("/dashboard");
@@ -306,6 +343,15 @@ export async function createCategoryAction(formData: FormData): Promise<ActionRe
     },
   });
 
+  // Siarkan Event Kategori Baru (SSE)
+  broadcastRealtimeEvent({
+    type: "SYSTEM_UPDATE",
+    entity: "CATEGORY",
+    title: "Kategori Masalah Baru",
+    message: `Kategori '${newCat.name}' (Target SLA: ${newCat.targetSlaMinutes}m) ditambahkan.`,
+    timestamp: Date.now(),
+  });
+
   revalidatePath("/dashboard");
   return {
     success: true,
@@ -341,6 +387,15 @@ export async function updateCategorySlaAction(categoryId: number, newSlaMinutes:
         newSlaMinutes: updated.targetSlaMinutes,
       },
     },
+  });
+
+  // Siarkan Event SLA Kategori Diperbarui (SSE)
+  broadcastRealtimeEvent({
+    type: "SYSTEM_UPDATE",
+    entity: "CATEGORY",
+    title: "Target SLA Diperbarui",
+    message: `Target SLA '${updated.name}' disesuaikan menjadi ${updated.targetSlaMinutes} menit.`,
+    timestamp: Date.now(),
   });
 
   revalidatePath("/dashboard");

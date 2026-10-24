@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
-import { Role } from "@prisma/client";
+import React, { useState, useTransition, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Role, TicketStatus, TicketUrgency } from "@prisma/client";
 import {
   Users,
   Shield,
@@ -22,6 +23,17 @@ import {
   Clock,
   Layers,
   MapPin,
+  PanelLeftClose,
+  PanelLeftOpen,
+  BarChart3,
+  Image as ImageIcon,
+  Video as VideoIcon,
+  Filter,
+  AlertTriangle,
+  Flame,
+  Check,
+  ChevronDown,
+  X,
 } from "lucide-react";
 import {
   createUserAction,
@@ -31,8 +43,19 @@ import {
   createCategoryAction,
   updateCategorySlaAction,
 } from "@/actions/superadmin";
-import ITStaffUnifiedView from "./ITStaffUnifiedView";
+import { updateTicketStatusAction } from "@/actions/tickets";
+import MediaViewerModal, { MediaAttachmentItem } from "@/components/MediaViewerModal";
 import { TicketItem } from "./ReporterView";
+import { motion, AnimatePresence } from "motion/react";
+import AnimatedCounter from "@/components/AnimatedCounter";
+import {
+  staggerContainerVariants,
+  cardItemVariants,
+  tabContentVariants,
+  modalBackdropVariants,
+  modalContentVariants,
+  interactiveCardHover,
+} from "@/lib/motionVariants";
 
 export interface SuperadminUserItem {
   id: string;
@@ -101,6 +124,32 @@ export default function SuperadminView({
     "USERS" | "UNITS" | "CATEGORIES" | "AUDIT_LOGS" | "TICKETS"
   >("USERS");
 
+  // Expand-Collapse State untuk Sidebar Tablet & Laptop / PC
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("siati_admin_sidebar_collapsed");
+      if (saved !== null) {
+        setIsSidebarCollapsed(saved === "true");
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("siati_admin_sidebar_collapsed", String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
   const [isPending, startTransition] = useTransition();
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: "success" | "error"; text: string } | null>(
     null
@@ -121,6 +170,201 @@ export default function SuperadminView({
 
   // Filter Log
   const [logFilterAction, setLogFilterAction] = useState<string>("ALL");
+
+  // State untuk Tab 5: Daftar Tiket Antrean Layanan TI (Monitoring Masuk & Belum Selesai)
+  const router = useRouter();
+  const [localTickets, setLocalTickets] = useState<TicketItem[]>(tickets);
+  const [ticketSearch, setTicketSearch] = useState<string>("");
+  const [ticketStatusFilter, setTicketStatusFilter] = useState<
+    "UNRESOLVED" | "SUBMITTED" | "ASSIGNED" | "IN_PROGRESS" | "PENDING_PARTS" | "ALL"
+  >("UNRESOLVED");
+  const [ticketUrgencyFilter, setTicketUrgencyFilter] = useState<string>("ALL");
+  const [activeMedia, setActiveMedia] = useState<MediaAttachmentItem | null>(null);
+
+  useEffect(() => {
+    setLocalTickets(tickets);
+  }, [tickets]);
+
+  // Statistik Ringkasan Tiket Antrean Layanan TI
+  const unresolvedTickets = localTickets.filter(
+    (t) => t.status !== TicketStatus.RESOLVED && t.status !== TicketStatus.CLOSED
+  );
+  const submittedTickets = localTickets.filter((t) => t.status === TicketStatus.SUBMITTED);
+  const inProgressTickets = localTickets.filter(
+    (t) => t.status === TicketStatus.IN_PROGRESS || t.status === TicketStatus.ASSIGNED
+  );
+  const pendingPartsTickets = localTickets.filter((t) => t.status === TicketStatus.PENDING_PARTS);
+  const emergencyTickets = localTickets.filter(
+    (t) =>
+      t.urgency === TicketUrgency.EMERGENCY &&
+      t.status !== TicketStatus.RESOLVED &&
+      t.status !== TicketStatus.CLOSED
+  );
+
+  // Filter Tiket untuk Daftar Kendali Super Admin
+  const filteredTickets = localTickets.filter((t) => {
+    if (ticketStatusFilter === "UNRESOLVED") {
+      if (t.status === TicketStatus.RESOLVED || t.status === TicketStatus.CLOSED) {
+        return false;
+      }
+    } else if (ticketStatusFilter !== "ALL") {
+      if (t.status !== ticketStatusFilter) {
+        return false;
+      }
+    }
+
+    if (ticketUrgencyFilter !== "ALL" && t.urgency !== ticketUrgencyFilter) {
+      return false;
+    }
+
+    if (ticketSearch.trim()) {
+      const q = ticketSearch.toLowerCase();
+      const matchNumber = t.ticketNumber.toLowerCase().includes(q);
+      const matchUnit =
+        t.unit.name.toLowerCase().includes(q) ||
+        t.unit.buildingZone.toLowerCase().includes(q);
+      const matchDesc = t.description.toLowerCase().includes(q);
+      const matchCategory = t.category.name.toLowerCase().includes(q);
+      const matchTech = t.assignedTechnician?.fullName.toLowerCase().includes(q) || false;
+      if (!matchNumber && !matchUnit && !matchDesc && !matchCategory && !matchTech) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const handleAdminUpdateUrgency = async (ticketId: string, newUrgency: TicketUrgency) => {
+    setLocalTickets((prev) =>
+      prev.map((t) => (t.id === ticketId ? { ...t, urgency: newUrgency } : t))
+    );
+
+    try {
+      const res = await updateTicketStatusAction({
+        ticketId,
+        urgency: newUrgency,
+      });
+
+      if (res.success) {
+        setFeedbackMsg({
+          type: "success",
+          text: `Tingkat Urgensi tiket berhasil diubah menjadi ${newUrgency}.`,
+        });
+        router.refresh();
+      } else {
+        setLocalTickets(tickets);
+        setFeedbackMsg({
+          type: "error",
+          text: res.message || "Gagal mengubah tingkat urgensi tiket.",
+        });
+      }
+    } catch {
+      setLocalTickets(tickets);
+      setFeedbackMsg({
+        type: "error",
+        text: "Terjadi kesalahan server saat memperbarui tingkat urgensi tiket.",
+      });
+    }
+  };
+
+  const formatTicketDate = (date: Date) => {
+    const d = new Date(date);
+    return d.toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const getRelativeTime = (date: Date) => {
+    const diffMs = Date.now() - new Date(date).getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "Baru saja";
+    if (diffMins < 60) return `${diffMins} mnt lalu`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours} jam lalu`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} hari lalu`;
+  };
+
+  const getTicketStatusBadge = (status: TicketStatus) => {
+    switch (status) {
+      case TicketStatus.SUBMITTED:
+        return {
+          label: "Baru Masuk",
+          color: "bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/30",
+          dot: "bg-sky-500 animate-pulse",
+        };
+      case TicketStatus.ASSIGNED:
+        return {
+          label: "Ditugaskan",
+          color: "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-500/30",
+          dot: "bg-indigo-500",
+        };
+      case TicketStatus.IN_PROGRESS:
+        return {
+          label: "Sedang Dikerjakan",
+          color: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30",
+          dot: "bg-amber-500 animate-pulse",
+        };
+      case TicketStatus.PENDING_PARTS:
+        return {
+          label: "Menunggu Part",
+          color: "bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-500/30",
+          dot: "bg-purple-500",
+        };
+      case TicketStatus.RESOLVED:
+        return {
+          label: "Selesai",
+          color: "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30",
+          dot: "bg-emerald-500",
+        };
+      case TicketStatus.CLOSED:
+        return {
+          label: "Ditutup",
+          color: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700",
+          dot: "bg-slate-500",
+        };
+      default:
+        return {
+          label: status,
+          color: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700",
+          dot: "bg-slate-400",
+        };
+    }
+  };
+
+  const getTicketUrgencyBadge = (urgency: TicketUrgency) => {
+    switch (urgency) {
+      case TicketUrgency.EMERGENCY:
+        return {
+          label: "P1 - DARURAT",
+          color: "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-500/40",
+        };
+      case TicketUrgency.HIGH:
+        return {
+          label: "P2 - TINGGI",
+          color: "bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-500/40",
+        };
+      case TicketUrgency.MEDIUM:
+        return {
+          label: "P3 - SEDANG",
+          color: "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/40",
+        };
+      case TicketUrgency.LOW:
+        return {
+          label: "P4 - RENDAH",
+          color: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40",
+        };
+      default:
+        return {
+          label: urgency,
+          color: "bg-slate-100 text-slate-700 border-slate-300",
+        };
+    }
+  };
 
   const filteredUsers = users.filter((u) => {
     const matchSearch =
@@ -143,7 +387,7 @@ export default function SuperadminView({
       case Role.IT_STAFF:
         return { label: "Staf TI RSBM", color: "bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-400/30" };
       case Role.MANAGEMENT:
-        return { label: "Manajemen / Direksi", color: "bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-400/30" };
+        return { label: "Manajemen", color: "bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-400/30" };
       default:
         return { label: "Staf Medis / Nakes", color: "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-400/30" };
     }
@@ -194,8 +438,376 @@ export default function SuperadminView({
 
   return (
     <div className="space-y-6 pb-20">
-      {/* Header Utama Superadmin */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-5 sm:p-7 border border-indigo-900/50 shadow-xl relative overflow-hidden">
+      {/* ========================================================================= */}
+      {/* TATA LETAK UTAMA DASHBOARD DENGAN EXPANDABLE SIDEBAR                     */}
+      {/* ========================================================================= */}
+      <div className="flex flex-col md:flex-row items-start gap-4 lg:gap-6">
+        {/* SIDEBAR NAVIGASI (TABLET & LAPTOP/PC) DENGAN EXPAND-COLLAPSE */}
+        <aside
+          className={`hidden md:flex flex-col sticky top-20 shrink-0 transition-all duration-300 ease-in-out print:hidden ${
+            isSidebarCollapsed ? "w-18 lg:w-20" : "w-64 lg:w-72"
+          }`}
+        >
+          <div className="w-full p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm space-y-3">
+            {/* Header Sidebar */}
+            <div
+              className={`pb-3 border-b border-slate-100 dark:border-white/10 flex items-center ${
+                isSidebarCollapsed
+                  ? "justify-center flex-col gap-2"
+                  : "justify-between"
+              }`}
+            >
+              {!isSidebarCollapsed ? (
+                <>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 block truncate">
+                      Pusat Pengendali
+                    </span>
+                    <div className="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5 truncate">
+                      Menu Super Admin TI
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleSidebar}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+                    title="Ciutkan Menu Navigasi"
+                  >
+                    <PanelLeftClose className="w-4 h-4" />
+                  </button>
+                </>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                    <Shield className="w-4 h-4" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleSidebar}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-purple-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    title="Perluas Menu Navigasi"
+                  >
+                    <PanelLeftOpen className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Daftar Navigasi Sidebar */}
+            <nav className="space-y-1.5">
+              {/* Menu 1: USERS */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("USERS")}
+                title={
+                  isSidebarCollapsed
+                    ? `Pengguna Pegawai (${users.length} Pegawai)`
+                    : undefined
+                }
+                className={`w-full rounded-xl transition-all flex items-center group ${
+                  isSidebarCollapsed
+                    ? "justify-center p-2.5"
+                    : "justify-between p-2.5"
+                } ${
+                  activeTab === "USERS"
+                    ? "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 font-bold shadow-sm"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors relative ${
+                      activeTab === "USERS"
+                        ? "bg-purple-600 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-purple-600 dark:group-hover:text-purple-400"
+                    }`}
+                  >
+                    <Users className="w-4 h-4" />
+                    {isSidebarCollapsed && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-purple-600 ring-2 ring-white dark:ring-slate-900" />
+                    )}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <div className="min-w-0 text-left">
+                      <div className="text-xs truncate">Pengguna Pegawai</div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        Kelola akun & status
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span
+                    className={`text-[11px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                      activeTab === "USERS"
+                        ? "bg-purple-200/80 dark:bg-purple-900/60 text-purple-900 dark:text-purple-200"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
+                    {users.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Menu 2: UNITS */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("UNITS")}
+                title={
+                  isSidebarCollapsed
+                    ? `Master Ruangan (${units.length} Unit)`
+                    : undefined
+                }
+                className={`w-full rounded-xl transition-all flex items-center group ${
+                  isSidebarCollapsed
+                    ? "justify-center p-2.5"
+                    : "justify-between p-2.5"
+                } ${
+                  activeTab === "UNITS"
+                    ? "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 font-bold shadow-sm"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors relative ${
+                      activeTab === "UNITS"
+                        ? "bg-indigo-600 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
+                    }`}
+                  >
+                    <Building2 className="w-4 h-4" />
+                    {isSidebarCollapsed && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-indigo-600 ring-2 ring-white dark:ring-slate-900" />
+                    )}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <div className="min-w-0 text-left">
+                      <div className="text-xs truncate">Master Ruangan</div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        Gedung, lantai & poli
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span
+                    className={`text-[11px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                      activeTab === "UNITS"
+                        ? "bg-indigo-200/80 dark:bg-indigo-900/60 text-indigo-900 dark:text-indigo-200"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
+                    {units.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Menu 3: CATEGORIES */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("CATEGORIES")}
+                title={
+                  isSidebarCollapsed
+                    ? `Kategori & SLA (${categories.length} Kategori)`
+                    : undefined
+                }
+                className={`w-full rounded-xl transition-all flex items-center group ${
+                  isSidebarCollapsed
+                    ? "justify-center p-2.5"
+                    : "justify-between p-2.5"
+                } ${
+                  activeTab === "CATEGORIES"
+                    ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold shadow-sm"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors relative ${
+                      activeTab === "CATEGORIES"
+                        ? "bg-amber-500 text-slate-950 font-bold"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-amber-500"
+                    }`}
+                  >
+                    <Tag className="w-4 h-4" />
+                    {isSidebarCollapsed && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-900" />
+                    )}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <div className="min-w-0 text-left">
+                      <div className="text-xs truncate">Kategori & SLA</div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        5 Pilar & target menit
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span
+                    className={`text-[11px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                      activeTab === "CATEGORIES"
+                        ? "bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
+                    {categories.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Menu 4: AUDIT_LOGS */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("AUDIT_LOGS")}
+                title={
+                  isSidebarCollapsed
+                    ? `Log Audit Keamanan (${auditLogs.length} Log)`
+                    : undefined
+                }
+                className={`w-full rounded-xl transition-all flex items-center group ${
+                  isSidebarCollapsed
+                    ? "justify-center p-2.5"
+                    : "justify-between p-2.5"
+                } ${
+                  activeTab === "AUDIT_LOGS"
+                    ? "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 font-bold shadow-sm"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors relative ${
+                      activeTab === "AUDIT_LOGS"
+                        ? "bg-purple-600 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-purple-600 dark:group-hover:text-purple-400"
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    {isSidebarCollapsed && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-purple-600 ring-2 ring-white dark:ring-slate-900" />
+                    )}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <div className="min-w-0 text-left">
+                      <div className="text-xs truncate">Log Audit Keamanan</div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        Forensik & aktivitas
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span
+                    className={`text-[11px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                      activeTab === "AUDIT_LOGS"
+                        ? "bg-purple-200/80 dark:bg-purple-900/60 text-purple-900 dark:text-purple-200"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
+                    {auditLogs.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Menu 5: TICKETS */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("TICKETS")}
+                title={
+                  isSidebarCollapsed
+                    ? `Daftar Tiket Antrean (${unresolvedTickets.length} Belum Selesai)`
+                    : undefined
+                }
+                className={`w-full rounded-xl transition-all flex items-center group ${
+                  isSidebarCollapsed
+                    ? "justify-center p-2.5"
+                    : "justify-between p-2.5"
+                } ${
+                  activeTab === "TICKETS"
+                    ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold shadow-sm"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors relative ${
+                      activeTab === "TICKETS"
+                        ? "bg-rose-600 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-rose-600 dark:group-hover:text-rose-400"
+                    }`}
+                  >
+                    <Layers className="w-4 h-4" />
+                    {isSidebarCollapsed && unresolvedTickets.length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-600 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+                    )}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <div className="min-w-0 text-left">
+                      <div className="text-xs truncate">Daftar Tiket Antrean</div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        Tiket masuk & belum selesai
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span
+                    className={`text-[11px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                      activeTab === "TICKETS"
+                        ? "bg-rose-200/80 dark:bg-rose-900/60 text-rose-900 dark:text-rose-200"
+                        : unresolvedTickets.length > 0
+                        ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
+                    {unresolvedTickets.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Menu 6: PORTAL MANAJEMEN */}
+              <div className="pt-2 mt-2 border-t border-slate-100 dark:border-white/10">
+                <a
+                  href="/dashboard?view=management"
+                  className={`w-full rounded-xl transition-all flex items-center group ${
+                    isSidebarCollapsed
+                      ? "justify-center p-2"
+                      : "justify-between p-2.5"
+                  } bg-amber-50/80 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 font-semibold shadow-sm`}
+                  title={isSidebarCollapsed ? "Beralih ke Portal Analitik Manajemen" : undefined}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-amber-500 text-slate-950 shadow-sm group-hover:scale-105 transition-transform">
+                      <BarChart3 className="w-4 h-4" />
+                    </div>
+                    {!isSidebarCollapsed && (
+                      <div className="min-w-0 text-left">
+                        <div className="text-xs truncate font-bold text-amber-900 dark:text-amber-200">
+                          Portal Manajemen
+                        </div>
+                        <div className="text-[10px] text-amber-700/80 dark:text-amber-400/80 truncate">
+                          Analitik & Mutu RS
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 bg-amber-200/80 dark:bg-amber-900/80 text-amber-900 dark:text-amber-200">
+                      Manajemen
+                    </span>
+                  )}
+                </a>
+              </div>
+            </nav>
+          </div>
+        </aside>
+
+        {/* AREA UTAMA DASHBOARD DI SEBELAH KANAN SIDEBAR */}
+        <div className="flex-1 min-w-0 w-full space-y-6">
+          {/* Header Utama Superadmin */}
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-5 sm:p-7 border border-indigo-900/50 shadow-xl relative overflow-hidden">
         <div className="absolute -right-16 -top-16 w-56 h-56 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1.5">
@@ -238,282 +850,80 @@ export default function SuperadminView({
       )}
 
       {/* Baris Ringkasan KPI Sistem (4 Kolom pada Tablet & PC) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm transition-colors flex items-center justify-between">
+      <motion.div
+        variants={staggerContainerVariants}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4"
+      >
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={interactiveCardHover}
+          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm transition-colors flex items-center justify-between"
+        >
           <div>
             <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Total Pengguna</span>
-            <span className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5 block">{users.length}</span>
+            <span className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5 block">
+              <AnimatedCounter value={users.length} />
+            </span>
             <span className="text-[11px] text-slate-400">Pegawai Terdaftar</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
             <Users className="w-5 h-5" />
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm transition-colors flex items-center justify-between">
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={interactiveCardHover}
+          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm transition-colors flex items-center justify-between"
+        >
           <div>
             <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Unit / Ruangan</span>
-            <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-0.5 block">{units.length}</span>
+            <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-0.5 block">
+              <AnimatedCounter value={units.length} />
+            </span>
             <span className="text-[11px] text-slate-400">Bangsal & Poliklinik</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
             <Building2 className="w-5 h-5" />
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm transition-colors flex items-center justify-between">
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={interactiveCardHover}
+          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm transition-colors flex items-center justify-between"
+        >
           <div>
             <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Kategori Masalah</span>
-            <span className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-0.5 block">{categories.length}</span>
+            <span className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-0.5 block">
+              <AnimatedCounter value={categories.length} />
+            </span>
             <span className="text-[11px] text-slate-400">Target SLA Aktif</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
             <Tag className="w-5 h-5" />
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm transition-colors flex items-center justify-between">
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={interactiveCardHover}
+          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm transition-colors flex items-center justify-between"
+        >
           <div>
             <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Log Keamanan</span>
-            <span className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-0.5 block">{auditLogs.length}</span>
+            <span className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-0.5 block">
+              <AnimatedCounter value={auditLogs.length} />
+            </span>
             <span className="text-[11px] text-slate-400">Audit Trail Tersimpan</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
             <Shield className="w-5 h-5" />
           </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* TATA LETAK DUA KOLOM DENGAN SIDEBAR PADA TABLET & LAPTOP                 */}
-      {/* ========================================================================= */}
-      <div className="md:grid md:grid-cols-12 md:gap-6 items-start">
-        {/* SIDEBAR NAV (Muncul pada Layar Tablet & Laptop / Desktop >= md) */}
-        <aside className="hidden md:block md:col-span-4 lg:col-span-3 sticky top-20 space-y-4 print:hidden">
-          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm space-y-3">
-            {/* Header Sidebar */}
-            <div className="pb-3 border-b border-slate-100 dark:border-white/10 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 block">
-                  Pusat Pengendali
-                </span>
-                <div className="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5">
-                  Menu Super Admin TI
-                </div>
-              </div>
-              <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
-                <Shield className="w-4 h-4" />
-              </div>
-            </div>
-
-            {/* Daftar Navigasi Sidebar */}
-            <nav className="space-y-1.5">
-              {/* Menu 1: USERS */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("USERS")}
-                className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between group ${
-                  activeTab === "USERS"
-                    ? "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 font-bold shadow-sm"
-                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                      activeTab === "USERS"
-                        ? "bg-purple-600 text-white"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-purple-600 dark:group-hover:text-purple-400"
-                    }`}
-                  >
-                    <Users className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs truncate">Pengguna Pegawai</div>
-                    <div className="text-[10px] text-slate-400 truncate">Kelola akun & status</div>
-                  </div>
-                </div>
-                <span
-                  className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
-                    activeTab === "USERS"
-                      ? "bg-purple-200/80 dark:bg-purple-900/60 text-purple-900 dark:text-purple-200"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                  }`}
-                >
-                  {users.length}
-                </span>
-              </button>
-
-              {/* Menu 2: UNITS */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("UNITS")}
-                className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between group ${
-                  activeTab === "UNITS"
-                    ? "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 font-bold shadow-sm"
-                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                      activeTab === "UNITS"
-                        ? "bg-indigo-600 text-white"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
-                    }`}
-                  >
-                    <Building2 className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs truncate">Master Ruangan</div>
-                    <div className="text-[10px] text-slate-400 truncate">Gedung, lantai & poli</div>
-                  </div>
-                </div>
-                <span
-                  className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
-                    activeTab === "UNITS"
-                      ? "bg-indigo-200/80 dark:bg-indigo-900/60 text-indigo-900 dark:text-indigo-200"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                  }`}
-                >
-                  {units.length}
-                </span>
-              </button>
-
-              {/* Menu 3: CATEGORIES */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("CATEGORIES")}
-                className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between group ${
-                  activeTab === "CATEGORIES"
-                    ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold shadow-sm"
-                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                      activeTab === "CATEGORIES"
-                        ? "bg-amber-500 text-white"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-amber-500 dark:group-hover:text-amber-400"
-                    }`}
-                  >
-                    <Tag className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs truncate">Kategori & SLA</div>
-                    <div className="text-[10px] text-slate-400 truncate">5 Pilar & target menit</div>
-                  </div>
-                </div>
-                <span
-                  className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
-                    activeTab === "CATEGORIES"
-                      ? "bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                  }`}
-                >
-                  {categories.length}
-                </span>
-              </button>
-
-              {/* Menu 4: AUDIT_LOGS */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("AUDIT_LOGS")}
-                className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between group ${
-                  activeTab === "AUDIT_LOGS"
-                    ? "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 font-bold shadow-sm"
-                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                      activeTab === "AUDIT_LOGS"
-                        ? "bg-purple-600 text-white"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-purple-600 dark:group-hover:text-purple-400"
-                    }`}
-                  >
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs truncate">Log Audit Keamanan</div>
-                    <div className="text-[10px] text-slate-400 truncate">Forensik & aktivitas</div>
-                  </div>
-                </div>
-                <span
-                  className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
-                    activeTab === "AUDIT_LOGS"
-                      ? "bg-purple-200/80 dark:bg-purple-900/60 text-purple-900 dark:text-purple-200"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                  }`}
-                >
-                  {auditLogs.length}
-                </span>
-              </button>
-
-              {/* Menu 5: TICKETS */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("TICKETS")}
-                className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between group ${
-                  activeTab === "TICKETS"
-                    ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold shadow-sm"
-                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                      activeTab === "TICKETS"
-                        ? "bg-rose-600 text-white"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-rose-600 dark:group-hover:text-rose-400"
-                    }`}
-                  >
-                    <Layers className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs truncate">Kendali Tiket TI</div>
-                    <div className="text-[10px] text-slate-400 truncate">Meja antrean terpadu</div>
-                  </div>
-                </div>
-                <span
-                  className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
-                    activeTab === "TICKETS"
-                      ? "bg-rose-200/80 dark:bg-rose-900/60 text-rose-900 dark:text-rose-200"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                  }`}
-                >
-                  {tickets.length}
-                </span>
-              </button>
-            </nav>
-
-            {/* Sidebar Security & System Info */}
-            <div className="pt-3 border-t border-slate-100 dark:border-white/10 space-y-2">
-              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-[11px] text-slate-500 dark:text-slate-400 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span>Proteksi Brute-force:</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 inline" /> Aktif
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Enkripsi Hash:</span>
-                  <span className="font-mono text-slate-700 dark:text-slate-300 font-semibold">
-                    Bcrypt (Factor 12)
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Anti-Bot Gate:</span>
-                  <span className="text-sky-600 dark:text-sky-400 font-bold">
-                    HMAC CAPTCHA
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </aside>
+        </motion.div>
+      </motion.div>
 
         {/* MOBILE HORIZONTAL TABS (Hanya muncul di Ponsel Layar Kecil < md) */}
         <div className="md:hidden flex items-center gap-1.5 xs:gap-2 p-1.5 bg-slate-200/80 dark:bg-slate-800/80 rounded-2xl border border-slate-300 dark:border-white/10 overflow-x-auto no-scrollbar shadow-inner mb-4">
@@ -579,17 +989,30 @@ export default function SuperadminView({
             }`}
           >
             <Layers className="w-4 h-4" />
-            <span>Kendali Tiket TI ({tickets.length})</span>
+            <span>Daftar Tiket ({unresolvedTickets.length})</span>
           </button>
-        </div>
 
-        {/* AREA KONTEN UTAMA DENGAN LEBAR OPTIMAL */}
-        <main className="md:col-span-8 lg:col-span-9 space-y-5">
+          <a
+            href="/dashboard?view=management"
+            className="py-2.5 px-3 sm:px-4 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap flex items-center gap-2 transition-all shadow-sm bg-amber-500 text-slate-950 hover:bg-amber-400"
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Portal Manajemen</span>
+          </a>
+        </div>
 
       {/* ========================================================================= */}
       {/* TAB 1: MANAJEMEN PENGGUNA (USER MANAGEMENT)                               */}
       {/* ========================================================================= */}
-      {activeTab === "USERS" && (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          variants={tabContentVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+        >
+          {activeTab === "USERS" && (
         <div className="space-y-4">
           {/* Toolbar & Tombol Tambah Pengguna */}
           <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -614,7 +1037,7 @@ export default function SuperadminView({
                 <option value="SUPERADMIN">Super Admin TI</option>
                 <option value="IT_STAFF">Staf TI RSBM</option>
                 <option value="STAFF_USER">Staf Medis / Nakes</option>
-                <option value="MANAGEMENT">Manajemen / Direksi</option>
+                <option value="MANAGEMENT">Manajemen</option>
               </select>
             </div>
 
@@ -960,31 +1383,642 @@ export default function SuperadminView({
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 5: KENDALI TIKET TI (EMBEDDED IT STAFF UNIFIED VIEW)                   */}
+      {/* TAB 5: DAFTAR TIKET ANTREAN LAYANAN TI (MONITORING MASUK & BELUM SELESAI)  */}
       {/* ========================================================================= */}
       {activeTab === "TICKETS" && (
-        <div className="space-y-4">
-          <div className="p-4 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-500/30 text-xs text-sky-800 dark:text-sky-300">
-            Sebagai <strong>Super Admin TI</strong>, Anda memiliki kendali penuh untuk meninjau seluruh meja antrean bantuan, mengambil tiket, menentukan tingkat urgensi, maupun menugaskan ke staf lapangan.
+        <div className="space-y-5">
+          {/* Header Banner Tab Tiket */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 text-[11px] font-bold border border-rose-200 dark:border-rose-500/30">
+                <Layers className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                Daftar Tiket Antrean Layanan TI RSBM
+              </div>
+              <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                Monitoring Aduan Masuk & Belum Selesai
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
+                Tinjau seluruh tiket kendala fasilitas TI yang baru diajukan (SUBMITTED) dan belum diselesaikan oleh staf teknisi lapangan. Anda juga dapat memperbarui tingkat urgensi tiket secara langsung.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => router.refresh()}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors self-start sm:self-auto shrink-0 shadow-sm"
+              title="Perbarui data tiket antrean"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Muat Ulang Tiket</span>
+            </button>
           </div>
-          <ITStaffUnifiedView
-            tickets={tickets}
-            technicians={technicians}
-            currentUserId={currentUserId}
-            currentUserName={currentUserName}
-            currentUserRole={currentUserRole}
-          />
+
+          {/* 4 Kartu Metrik Ringkasan Status Tiket */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/40 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-xs text-rose-700 dark:text-rose-400 font-semibold block">Belum Selesai</span>
+                <span className="text-2xl font-black text-rose-700 dark:text-rose-400 mt-0.5 block">
+                  <AnimatedCounter value={unresolvedTickets.length} />
+                </span>
+                <span className="text-[11px] text-slate-400">Antrean Aktif Total</span>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                <Clock className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-sky-200 dark:border-sky-900/40 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-xs text-sky-700 dark:text-sky-400 font-semibold block">Baru Masuk</span>
+                <span className="text-2xl font-black text-sky-700 dark:text-sky-400 mt-0.5 block">
+                  <AnimatedCounter value={submittedTickets.length} />
+                </span>
+                <span className="text-[11px] text-slate-400">Menunggu Respon Teknisi</span>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/40 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-xs text-amber-700 dark:text-amber-400 font-semibold block">Sedang Ditangani</span>
+                <span className="text-2xl font-black text-amber-700 dark:text-amber-400 mt-0.5 block">
+                  <AnimatedCounter value={inProgressTickets.length} />
+                </span>
+                <span className="text-[11px] text-slate-400">Dalam Pengerjaan Staf TI</span>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Activity className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/40 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="text-xs text-red-700 dark:text-red-400 font-semibold block">Darurat Kritis</span>
+                <span className="text-2xl font-black text-red-600 dark:text-red-400 mt-0.5 block">
+                  <AnimatedCounter value={emergencyTickets.length} />
+                </span>
+                <span className="text-[11px] text-slate-400">Tingkat Urgensi P1</span>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                <Flame className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+
+          {/* Bar Filter & Pencarian */}
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm space-y-3">
+            {/* Baris Atas: Input Pencarian & Dropdown Urgensi */}
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="relative flex-1 w-full">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                <input
+                  type="text"
+                  placeholder="Cari no. tiket, nama ruangan, gedung, uraian masalah, atau teknisi..."
+                  value={ticketSearch}
+                  onChange={(e) => setTicketSearch(e.target.value)}
+                  className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+                {ticketSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setTicketSearch("")}
+                    className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                <Filter className="w-4 h-4 text-slate-400 hidden sm:block shrink-0" />
+                <select
+                  value={ticketUrgencyFilter}
+                  onChange={(e) => setTicketUrgencyFilter(e.target.value)}
+                  className="w-full sm:w-52 py-2.5 px-3 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                >
+                  <option value="ALL">Semua Tingkat Urgensi</option>
+                  <option value="EMERGENCY">P1 - DARURAT</option>
+                  <option value="HIGH">P2 - TINGGI</option>
+                  <option value="MEDIUM">P3 - SEDANG</option>
+                  <option value="LOW">P4 - RENDAH</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Baris Bawah: Tombol Pills Filter Status Tiket */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1 hidden sm:inline">
+                Status:
+              </span>
+              <button
+                type="button"
+                onClick={() => setTicketStatusFilter("UNRESOLVED")}
+                className={`py-1.5 px-3 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+                  ticketStatusFilter === "UNRESOLVED"
+                    ? "bg-rose-600 text-white shadow-sm"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
+              >
+                <span>Belum Selesai (Aktif)</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                    ticketStatusFilter === "UNRESOLVED"
+                      ? "bg-white/20 text-white"
+                      : "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
+                  }`}
+                >
+                  {unresolvedTickets.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTicketStatusFilter("SUBMITTED")}
+                className={`py-1.5 px-3 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+                  ticketStatusFilter === "SUBMITTED"
+                    ? "bg-sky-600 text-white shadow-sm"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
+              >
+                <span>Baru Masuk</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                    ticketStatusFilter === "SUBMITTED"
+                      ? "bg-white/20 text-white"
+                      : "bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300"
+                  }`}
+                >
+                  {submittedTickets.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTicketStatusFilter("ASSIGNED")}
+                className={`py-1.5 px-3 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+                  ticketStatusFilter === "ASSIGNED"
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
+              >
+                <span>Ditugaskan</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                    ticketStatusFilter === "ASSIGNED"
+                      ? "bg-white/20 text-white"
+                      : "bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300"
+                  }`}
+                >
+                  {localTickets.filter((t) => t.status === TicketStatus.ASSIGNED).length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTicketStatusFilter("IN_PROGRESS")}
+                className={`py-1.5 px-3 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+                  ticketStatusFilter === "IN_PROGRESS"
+                    ? "bg-amber-600 text-white shadow-sm"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
+              >
+                <span>Sedang Dikerjakan</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                    ticketStatusFilter === "IN_PROGRESS"
+                      ? "bg-white/20 text-white"
+                      : "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300"
+                  }`}
+                >
+                  {localTickets.filter((t) => t.status === TicketStatus.IN_PROGRESS).length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTicketStatusFilter("PENDING_PARTS")}
+                className={`py-1.5 px-3 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+                  ticketStatusFilter === "PENDING_PARTS"
+                    ? "bg-purple-600 text-white shadow-sm"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
+              >
+                <span>Menunggu Part</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                    ticketStatusFilter === "PENDING_PARTS"
+                      ? "bg-white/20 text-white"
+                      : "bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300"
+                  }`}
+                >
+                  {pendingPartsTickets.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTicketStatusFilter("ALL")}
+                className={`py-1.5 px-3 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+                  ticketStatusFilter === "ALL"
+                    ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 shadow-sm"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
+              >
+                <span>Semua Tiket</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-extrabold ${
+                    ticketStatusFilter === "ALL"
+                      ? "bg-white/20 text-white dark:bg-black/20 dark:text-slate-900"
+                      : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                  }`}
+                >
+                  {localTickets.length}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Keterangan Jumlah Hasil */}
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
+            <span>
+              Menampilkan <strong className="text-slate-900 dark:text-white font-bold">{filteredTickets.length}</strong> tiket {ticketStatusFilter === "UNRESOLVED" ? "yang belum selesai" : "sesuai filter"}
+            </span>
+            {ticketStatusFilter !== "UNRESOLVED" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTicketStatusFilter("UNRESOLVED");
+                  setTicketUrgencyFilter("ALL");
+                  setTicketSearch("");
+                }}
+                className="text-rose-600 dark:text-rose-400 hover:underline font-semibold"
+              >
+                Kembali ke Tiket Belum Selesai (Default)
+              </button>
+            )}
+          </div>
+
+          {/* Daftar Tiket: Versi Tabel Desktop & Tablet (md+) */}
+          <div className="hidden md:block bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
+            {filteredTickets.length === 0 ? (
+              <div className="py-16 text-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                  {ticketStatusFilter === "UNRESOLVED" && !ticketSearch && ticketUrgencyFilter === "ALL"
+                    ? "Tidak Ada Tiket Antrean yang Belum Selesai"
+                    : "Tidak Ada Tiket yang Cocok"}
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                  {ticketStatusFilter === "UNRESOLVED" && !ticketSearch && ticketUrgencyFilter === "ALL"
+                    ? "Luar biasa! Seluruh kendala fasilitas TI rumah sakit saat ini telah terselesaikan dengan baik oleh Staf TI RSBM."
+                    : "Coba sesuaikan kata kunci pencarian atau ubah filter status & tingkat urgensi."}
+                </p>
+                {(ticketSearch || ticketUrgencyFilter !== "ALL" || ticketStatusFilter !== "UNRESOLVED") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTicketSearch("");
+                      setTicketUrgencyFilter("ALL");
+                      setTicketStatusFilter("UNRESOLVED");
+                    }}
+                    className="mt-2 px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors"
+                  >
+                    Reset Filter
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-white/10">
+                    <tr>
+                      <th className="py-3.5 px-4">No. Tiket & Waktu</th>
+                      <th className="py-3.5 px-4">Ruangan & Lokasi</th>
+                      <th className="py-3.5 px-4">Kategori & SLA</th>
+                      <th className="py-3.5 px-4">Tingkat Urgensi</th>
+                      <th className="py-3.5 px-4">Uraian Masalah & Lampiran</th>
+                      <th className="py-3.5 px-4">Status & Teknisi</th>
+                      <th className="py-3.5 px-4 text-right">Durasi Respon</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                    {filteredTickets.map((ticket) => {
+                      const statusBadge = getTicketStatusBadge(ticket.status);
+                      const urgencyBadge = getTicketUrgencyBadge(ticket.urgency);
+                      return (
+                        <tr
+                          key={ticket.id}
+                          className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                        >
+                          {/* 1. No Tiket & Waktu */}
+                          <td className="py-3.5 px-4 align-top whitespace-nowrap">
+                            <span className="font-mono font-bold text-rose-600 dark:text-rose-400 text-xs block">
+                              {ticket.ticketNumber}
+                            </span>
+                            <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              <span>{getRelativeTime(ticket.submittedAt)}</span>
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              {formatTicketDate(ticket.submittedAt)}
+                            </div>
+                          </td>
+
+                          {/* 2. Ruangan & Lokasi */}
+                          <td className="py-3.5 px-4 align-top">
+                            <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <Building2 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                              <span>{ticket.unit.name}</span>
+                            </div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span>{ticket.unit.buildingZone}</span>
+                            </div>
+                          </td>
+
+                          {/* 3. Kategori & SLA */}
+                          <td className="py-3.5 px-4 align-top whitespace-nowrap">
+                            <span className="font-semibold text-slate-800 dark:text-slate-200 block">
+                              {ticket.category.name}
+                            </span>
+                            <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                              SLA: {ticket.category.targetSlaMinutes} Menit
+                            </span>
+                          </td>
+
+                          {/* 4. Tingkat Urgensi (Bisa diedit oleh Superadmin) */}
+                          <td className="py-3.5 px-4 align-top whitespace-nowrap">
+                            <select
+                              value={ticket.urgency}
+                              onChange={(e) => handleAdminUpdateUrgency(ticket.id, e.target.value as TicketUrgency)}
+                              className={`text-[11px] font-bold py-1 px-2 rounded-lg border focus:outline-none transition-colors cursor-pointer ${urgencyBadge.color}`}
+                              title="Ubah Tingkat Urgensi Tiket Ini"
+                            >
+                              <option value={TicketUrgency.EMERGENCY}>P1 - DARURAT</option>
+                              <option value={TicketUrgency.HIGH}>P2 - TINGGI</option>
+                              <option value={TicketUrgency.MEDIUM}>P3 - SEDANG</option>
+                              <option value={TicketUrgency.LOW}>P4 - RENDAH</option>
+                            </select>
+                          </td>
+
+                          {/* 5. Uraian Masalah & Lampiran */}
+                          <td className="py-3.5 px-4 align-top max-w-sm">
+                            <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-normal">
+                              {ticket.description}
+                            </p>
+
+                            {/* Lampiran Foto/Video */}
+                            {ticket.attachments && ticket.attachments.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 mt-2">
+                                {ticket.attachments.map((att) => (
+                                  <button
+                                    key={att.id}
+                                    type="button"
+                                    onClick={() =>
+                                      setActiveMedia({
+                                        id: att.id,
+                                        fileType: att.fileType as "IMAGE" | "VIDEO",
+                                        storedFilename: att.storedFilename,
+                                        originalName: att.originalName,
+                                      })
+                                    }
+                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all active:scale-95 shadow-sm ${
+                                      att.fileType === "IMAGE"
+                                        ? "bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/30"
+                                        : "bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30"
+                                    }`}
+                                    title="Klik untuk membuka lampiran di layar ini"
+                                  >
+                                    {att.fileType === "IMAGE" ? (
+                                      <ImageIcon className="w-3 h-3 text-sky-500" />
+                                    ) : (
+                                      <VideoIcon className="w-3 h-3 text-amber-500" />
+                                    )}
+                                    <span>{att.fileType === "IMAGE" ? "Foto Bukti" : "Video Bukti"}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* 6. Status & Teknisi */}
+                          <td className="py-3.5 px-4 align-top whitespace-nowrap">
+                            <span
+                              className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border ${statusBadge.color}`}
+                            >
+                              <span className={`w-2 h-2 rounded-full ${statusBadge.dot}`} />
+                              <span>{statusBadge.label}</span>
+                            </span>
+
+                            {ticket.assignedTechnician ? (
+                              <div className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 font-semibold mt-1.5">
+                                <UserCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                <span>{ticket.assignedTechnician.fullName}</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-1.5">
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                <span>Belum Ada Teknisi</span>
+                              </div>
+                            )}
+                          </td>
+
+                          {/* 7. Durasi Respon */}
+                          <td className="py-3.5 px-4 align-top text-right whitespace-nowrap">
+                            {ticket.responseMinutes !== null ? (
+                              <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200">
+                                {ticket.responseMinutes} mnt
+                              </span>
+                            ) : (
+                              <span className="text-[11px] text-slate-400 font-mono italic">
+                                Belum direspon
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Daftar Tiket: Versi Kartu Mobile (< md) */}
+          <div className="md:hidden space-y-3">
+            {filteredTickets.length === 0 ? (
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-8 text-center space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                  {ticketStatusFilter === "UNRESOLVED"
+                    ? "Tidak Ada Tiket yang Belum Selesai"
+                    : "Tidak Ada Tiket yang Cocok"}
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {ticketStatusFilter === "UNRESOLVED"
+                    ? "Seluruh aduan fasilitas TI saat ini telah terselesaikan dengan baik."
+                    : "Coba sesuaikan pencarian atau filter status tiket."}
+                </p>
+              </div>
+            ) : (
+              filteredTickets.map((ticket) => {
+                const statusBadge = getTicketStatusBadge(ticket.status);
+                const urgencyBadge = getTicketUrgencyBadge(ticket.urgency);
+                return (
+                  <div
+                    key={ticket.id}
+                    className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-4 shadow-sm space-y-3"
+                  >
+                    {/* Header Kartu: No Tiket & Status */}
+                    <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-white/5 pb-2.5">
+                      <div>
+                        <span className="font-mono font-bold text-rose-600 dark:text-rose-400 text-xs">
+                          {ticket.ticketNumber}
+                        </span>
+                        <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                          <Clock className="w-3 h-3" />
+                          <span>{getRelativeTime(ticket.submittedAt)}</span>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border ${statusBadge.color}`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusBadge.dot}`} />
+                        <span>{statusBadge.label}</span>
+                      </span>
+                    </div>
+
+                    {/* Lokasi & Kategori */}
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-medium">Ruangan:</span>
+                        <span className="font-bold text-slate-900 dark:text-white truncate block">
+                          {ticket.unit.name}
+                        </span>
+                        <span className="text-[10px] text-slate-500 truncate block">
+                          {ticket.unit.buildingZone}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-medium">Kategori:</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">
+                          {ticket.category.name}
+                        </span>
+                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold block">
+                          SLA {ticket.category.targetSlaMinutes}m
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Tingkat Urgensi Dropdown */}
+                    <div className="flex items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800/60 p-2 rounded-xl">
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                        Tingkat Urgensi:
+                      </span>
+                      <select
+                        value={ticket.urgency}
+                        onChange={(e) => handleAdminUpdateUrgency(ticket.id, e.target.value as TicketUrgency)}
+                        className={`text-[11px] font-bold py-1 px-2 rounded-lg border focus:outline-none ${urgencyBadge.color}`}
+                      >
+                        <option value={TicketUrgency.EMERGENCY}>P1 - DARURAT</option>
+                        <option value={TicketUrgency.HIGH}>P2 - TINGGI</option>
+                        <option value={TicketUrgency.MEDIUM}>P3 - SEDANG</option>
+                        <option value={TicketUrgency.LOW}>P4 - RENDAH</option>
+                      </select>
+                    </div>
+
+                    {/* Deskripsi Masalah */}
+                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                      {ticket.description}
+                    </p>
+
+                    {/* Lampiran Media */}
+                    {ticket.attachments && ticket.attachments.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {ticket.attachments.map((att) => (
+                          <button
+                            key={att.id}
+                            type="button"
+                            onClick={() =>
+                              setActiveMedia({
+                                id: att.id,
+                                fileType: att.fileType as "IMAGE" | "VIDEO",
+                                storedFilename: att.storedFilename,
+                                originalName: att.originalName,
+                              })
+                            }
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${
+                              att.fileType === "IMAGE"
+                                ? "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300 border-sky-200"
+                                : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300 border-amber-200"
+                            }`}
+                          >
+                            {att.fileType === "IMAGE" ? (
+                              <ImageIcon className="w-3 h-3 text-sky-500" />
+                            ) : (
+                              <VideoIcon className="w-3 h-3 text-amber-500" />
+                            )}
+                            <span>{att.fileType === "IMAGE" ? "Foto Bukti" : "Video Bukti"}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Teknisi Penangan */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-xs">
+                      <span className="text-[11px] text-slate-400">Teknisi Penangan:</span>
+                      {ticket.assignedTechnician ? (
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <UserCheck className="w-3.5 h-3.5" />
+                          {ticket.assignedTechnician.fullName}
+                        </span>
+                      ) : (
+                        <span className="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          Menunggu Staf TI
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
       )}
-        </main>
+        </motion.div>
+      </AnimatePresence>
+        </div>
       </div>
 
       {/* ========================================================================= */}
       {/* MODAL 1: TAMBAH PENGGUNA BARU                                             */}
       {/* ========================================================================= */}
-      {isAddUserOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+      <AnimatePresence>
+        {isAddUserOpen && (
+          <motion.div
+            variants={modalBackdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              variants={modalContentVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl"
+            >
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-3">
               <h4 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Users className="w-5 h-5 text-sky-600 dark:text-sky-400" />
@@ -1066,7 +2100,7 @@ export default function SuperadminView({
                   >
                     <option value={Role.STAFF_USER}>Staf Medis / Nakes (Pelapor)</option>
                     <option value={Role.IT_STAFF}>Staf TI RSBM (Helpdesk & Lapangan)</option>
-                    <option value={Role.MANAGEMENT}>Manajemen / Direksi RS</option>
+                    <option value={Role.MANAGEMENT}>Manajemen RS</option>
                     <option value={Role.SUPERADMIN}>Super Admin TI</option>
                   </select>
                 </div>
@@ -1132,16 +2166,30 @@ export default function SuperadminView({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+    </AnimatePresence>
 
       {/* ========================================================================= */}
       {/* MODAL 2: TAMBAH MASTER UNIT                                               */}
       {/* ========================================================================= */}
-      {isAddUnitOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <AnimatePresence>
+        {isAddUnitOpen && (
+          <motion.div
+            variants={modalBackdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              variants={modalContentVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl"
+            >
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-3">
               <h4 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
@@ -1211,102 +2259,120 @@ export default function SuperadminView({
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+    </AnimatePresence>
 
       {/* ========================================================================= */}
       {/* MODAL 3: TAMBAH KATEGORI KENDALA & SLA                                    */}
       {/* ========================================================================= */}
-      {isAddCatOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-3">
-              <h4 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Tag className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                Tambah Kategori Kendala Baru
-              </h4>
-              <button onClick={() => setIsAddCatOpen(false)} className="text-slate-400 hover:text-slate-600">
-                ✕
-              </button>
-            </div>
-
-            <form
-              action={async (formData) => {
-                setFeedbackMsg(null);
-                startTransition(async () => {
-                  const res = await createCategoryAction(formData);
-                  if (res.success) {
-                    setIsAddCatOpen(false);
-                    setFeedbackMsg({ type: "success", text: res.message || "Kategori berhasil dibuat." });
-                    window.location.reload();
-                  } else {
-                    setFeedbackMsg({ type: "error", text: res.message || "Gagal membuat kategori." });
-                  }
-                });
-              }}
-              className="space-y-3.5 text-xs"
+      <AnimatePresence>
+        {isAddCatOpen && (
+          <motion.div
+            variants={modalBackdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              variants={modalContentVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl"
             >
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block">
-                  Nama Kategori *
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  placeholder="Contoh: Server & Basis Data"
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block">
-                  Uraian Cakupan Masalah
-                </label>
-                <input
-                  type="text"
-                  name="description"
-                  placeholder="Contoh: Pemadaman database, backup berkas server.."
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block">
-                  Target SLA Waktu Respon (Menit) *
-                </label>
-                <input
-                  type="number"
-                  name="targetSlaMinutes"
-                  required
-                  min={5}
-                  max={360}
-                  defaultValue={30}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
-                />
-              </div>
-
-              <div className="flex gap-2.5 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setIsAddCatOpen(false)}
-                  className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="flex-1 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-md disabled:opacity-50"
-                >
-                  {isPending ? "Menyimpan..." : "Simpan Kategori"}
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-3">
+                <h4 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Tag className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  Tambah Kategori Kendala Baru
+                </h4>
+                <button onClick={() => setIsAddCatOpen(false)} className="text-slate-400 hover:text-slate-600">
+                  ✕
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+
+              <form
+                action={async (formData) => {
+                  setFeedbackMsg(null);
+                  startTransition(async () => {
+                    const res = await createCategoryAction(formData);
+                    if (res.success) {
+                      setIsAddCatOpen(false);
+                      setFeedbackMsg({ type: "success", text: res.message || "Kategori berhasil dibuat." });
+                      window.location.reload();
+                    } else {
+                      setFeedbackMsg({ type: "error", text: res.message || "Gagal membuat kategori." });
+                    }
+                  });
+                }}
+                className="space-y-3.5 text-xs"
+              >
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block">
+                    Nama Kategori *
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    placeholder="Contoh: Server & Basis Data"
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block">
+                    Uraian Cakupan Masalah
+                  </label>
+                  <input
+                    type="text"
+                    name="description"
+                    placeholder="Contoh: Pemadaman database, backup berkas server.."
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block">
+                    Target SLA Waktu Respon (Menit) *
+                  </label>
+                  <input
+                    type="number"
+                    name="targetSlaMinutes"
+                    required
+                    min={5}
+                    max={360}
+                    defaultValue={30}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
+                  />
+                </div>
+
+                <div className="flex gap-2.5 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddCatOpen(false)}
+                    className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isPending}
+                    className="flex-1 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-md disabled:opacity-50"
+                  >
+                    {isPending ? "Menyimpan..." : "Simpan Kategori"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Penampil Foto & Video Lampiran (Responsif Mobile / Tablet / PC) */}
+      <MediaViewerModal media={activeMedia} onClose={() => setActiveMedia(null)} />
     </div>
   );
 }

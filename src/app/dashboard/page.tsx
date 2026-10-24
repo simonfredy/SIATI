@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Role } from "@prisma/client";
+import { Shield, ArrowLeft } from "lucide-react";
 import DashboardNavbar from "@/components/DashboardNavbar";
 import ReporterView, { TicketItem } from "@/components/ReporterView";
 import ITStaffUnifiedView from "@/components/ITStaffUnifiedView";
@@ -15,7 +16,97 @@ import ManagementView, {
 
 export const instant = false;
 
-export default async function DashboardPage() {
+// Helper terpusat untuk mengambil data lengkap analitik manajemen eksekutif
+async function getManagementDashboardData() {
+  const [rawTickets, rawUnits, rawCategories, rawTechnicians] = await Promise.all([
+    prisma.ticket.findMany({
+      include: {
+        unit: true,
+        category: true,
+        assignedTechnician: { select: { id: true, fullName: true, username: true } },
+        reporter: { select: { id: true, fullName: true, username: true } },
+        attachments: true,
+        rating: true,
+      },
+      orderBy: { submittedAt: "desc" },
+    }),
+    prisma.departmentUnit.findMany({
+      include: {
+        _count: { select: { tickets: true, users: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.category.findMany({
+      include: {
+        _count: { select: { tickets: true } },
+      },
+      orderBy: { id: "asc" },
+    }),
+    prisma.user.findMany({
+      where: {
+        role: { in: [Role.IT_STAFF, Role.SUPERADMIN] },
+        isActive: true,
+      },
+      select: {
+        id: true,
+        fullName: true,
+        username: true,
+        role: true,
+        departmentUnit: { select: { name: true } },
+      },
+      orderBy: { fullName: "asc" },
+    }),
+  ]);
+
+  const tickets: ManagementTicketItem[] = rawTickets.map((t) => ({
+    id: t.id,
+    ticketNumber: t.ticketNumber,
+    description: t.description,
+    urgency: t.urgency,
+    status: t.status,
+    submittedAt: t.submittedAt,
+    firstAssignedAt: t.firstAssignedAt,
+    workStartedAt: t.workStartedAt,
+    workResolvedAt: t.workResolvedAt,
+    responseMinutes: t.responseMinutes,
+    repairMinutes: t.repairMinutes,
+    totalLeadMinutes: t.totalLeadMinutes,
+    unit: {
+      id: t.unit.id,
+      name: t.unit.name,
+      buildingZone: t.unit.buildingZone,
+    },
+    category: {
+      id: t.category.id,
+      name: t.category.name,
+      targetSlaMinutes: t.category.targetSlaMinutes,
+    },
+    reporter: {
+      id: t.reporter.id,
+      fullName: t.reporter.fullName,
+      username: t.reporter.username,
+    },
+    assignedTechnician: t.assignedTechnician,
+    rating: t.rating ? { ratingScore: t.rating.ratingScore, feedback: t.rating.feedback } : null,
+    attachments: t.attachments.map((a) => ({
+      id: a.id,
+      fileType: a.fileType,
+      storedFilename: a.storedFilename,
+      originalName: a.originalName,
+    })),
+  }));
+
+  return { tickets, units: rawUnits, categories: rawCategories, technicians: rawTechnicians };
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ view?: string }>;
+}) {
+  const resolvedParams = searchParams ? await searchParams : undefined;
+  const currentView = resolvedParams?.view;
+
   const session = await getCurrentUser();
   if (!session) {
     redirect("/");
@@ -88,6 +179,62 @@ export default async function DashboardPage() {
 
   // 2. Jika Role adalah SUPERADMIN (Pusat Kendali Administrasi & Keamanan Sistem)
   if (user.role === Role.SUPERADMIN) {
+    // A. Jika Super Admin sedang mengakses Mode Portal Manajemen
+    if (currentView === "management") {
+      const mgmtData = await getManagementDashboardData();
+      return (
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col transition-colors">
+          <DashboardNavbar
+            user={{
+              userId: user.id,
+              username: user.username,
+              fullName: user.fullName,
+              role: user.role,
+              departmentUnitName: user.departmentUnit?.name,
+            }}
+            activeView="management"
+          />
+          <main className="flex-1 max-w-7xl xl:max-w-[1600px] w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
+            {/* Banner Otoritas Superadmin di Portal Manajemen */}
+            <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 text-white border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center shrink-0 border border-purple-400/30">
+                  <Shield className="w-5 h-5 text-purple-300" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold flex items-center gap-2 flex-wrap">
+                    <span>Hak Akses Super Admin: Portal Manajemen</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 font-semibold">
+                      Akses Otoritas Penuh
+                    </span>
+                  </div>
+                  <p className="text-xs text-purple-200/80 mt-0.5">
+                    Anda sedang meninjau analitik SLA eksekutif, rekapitulasi audit tiket, dan matriks kinerja staf TI sebagai Super Admin.
+                  </p>
+                </div>
+              </div>
+              <a
+                href="/dashboard"
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/20 transition-all flex items-center gap-1.5 self-start sm:self-auto shrink-0 shadow-sm"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Kembali ke Pusat Super Admin</span>
+              </a>
+            </div>
+
+            <ManagementView
+              tickets={mgmtData.tickets}
+              units={mgmtData.units}
+              categories={mgmtData.categories}
+              technicians={mgmtData.technicians}
+              currentUserName={user.fullName}
+            />
+          </main>
+        </div>
+      );
+    }
+
+    // B. Default Super Admin: Pusat Kendali Administrasi & Keamanan Sistem
     const [rawUsers, rawUnits, rawCategories, rawAuditLogs, rawTickets, technicians] =
       await Promise.all([
         prisma.user.findMany({
@@ -194,8 +341,9 @@ export default async function DashboardPage() {
             role: user.role,
             departmentUnitName: user.departmentUnit?.name,
           }}
+          activeView="superadmin"
         />
-        <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
+        <main className="flex-1 max-w-7xl xl:max-w-[1600px] w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
           <SuperadminView
             users={usersList}
             units={rawUnits}
@@ -212,85 +360,9 @@ export default async function DashboardPage() {
     );
   }
 
-  // 3. Jika Role adalah Karumkit / Direksi / Pimpinan (MANAGEMENT)
+  // 3. Jika Role adalah Manajemen (MANAGEMENT)
   if (user.role === Role.MANAGEMENT) {
-    const [rawTickets, rawUnits, rawCategories, rawTechnicians] = await Promise.all([
-      prisma.ticket.findMany({
-        include: {
-          unit: true,
-          category: true,
-          assignedTechnician: { select: { id: true, fullName: true, username: true } },
-          reporter: { select: { id: true, fullName: true, username: true } },
-          attachments: true,
-          rating: true,
-        },
-        orderBy: { submittedAt: "desc" },
-      }),
-      prisma.departmentUnit.findMany({
-        include: {
-          _count: { select: { tickets: true, users: true } },
-        },
-        orderBy: { name: "asc" },
-      }),
-      prisma.category.findMany({
-        include: {
-          _count: { select: { tickets: true } },
-        },
-        orderBy: { id: "asc" },
-      }),
-      prisma.user.findMany({
-        where: {
-          role: { in: [Role.IT_STAFF, Role.SUPERADMIN] },
-          isActive: true,
-        },
-        select: {
-          id: true,
-          fullName: true,
-          username: true,
-          role: true,
-          departmentUnit: { select: { name: true } },
-        },
-        orderBy: { fullName: "asc" },
-      }),
-    ]);
-
-    const tickets: ManagementTicketItem[] = rawTickets.map((t) => ({
-      id: t.id,
-      ticketNumber: t.ticketNumber,
-      description: t.description,
-      urgency: t.urgency,
-      status: t.status,
-      submittedAt: t.submittedAt,
-      firstAssignedAt: t.firstAssignedAt,
-      workStartedAt: t.workStartedAt,
-      workResolvedAt: t.workResolvedAt,
-      responseMinutes: t.responseMinutes,
-      repairMinutes: t.repairMinutes,
-      totalLeadMinutes: t.totalLeadMinutes,
-      unit: {
-        id: t.unit.id,
-        name: t.unit.name,
-        buildingZone: t.unit.buildingZone,
-      },
-      category: {
-        id: t.category.id,
-        name: t.category.name,
-        targetSlaMinutes: t.category.targetSlaMinutes,
-      },
-      reporter: {
-        id: t.reporter.id,
-        fullName: t.reporter.fullName,
-        username: t.reporter.username,
-      },
-      assignedTechnician: t.assignedTechnician,
-      rating: t.rating ? { ratingScore: t.rating.ratingScore, feedback: t.rating.feedback } : null,
-      attachments: t.attachments.map((a) => ({
-        id: a.id,
-        fileType: a.fileType,
-        storedFilename: a.storedFilename,
-        originalName: a.originalName,
-      })),
-    }));
+    const mgmtData = await getManagementDashboardData();
 
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col transition-colors">
@@ -302,13 +374,14 @@ export default async function DashboardPage() {
             role: user.role,
             departmentUnitName: user.departmentUnit?.name,
           }}
+          activeView="management"
         />
-        <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
+        <main className="flex-1 max-w-7xl xl:max-w-[1600px] w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
           <ManagementView
-            tickets={tickets}
-            units={rawUnits}
-            categories={rawCategories}
-            technicians={rawTechnicians}
+            tickets={mgmtData.tickets}
+            units={mgmtData.units}
+            categories={mgmtData.categories}
+            technicians={mgmtData.technicians}
             currentUserName={user.fullName}
           />
         </main>

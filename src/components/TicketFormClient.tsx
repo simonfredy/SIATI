@@ -18,6 +18,7 @@ import {
   Sparkles,
   ShieldAlert,
 } from "lucide-react";
+import MediaViewerModal, { MediaAttachmentItem } from "@/components/MediaViewerModal";
 
 interface Unit {
   id: number;
@@ -62,6 +63,7 @@ export default function TicketFormClient({
     ticketNumber: string;
     ticketId: string;
   } | null>(null);
+  const [activeMedia, setActiveMedia] = useState<MediaAttachmentItem | null>(null);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -276,19 +278,6 @@ export default function TicketFormClient({
                 })}
               </div>
             </div>
-
-            {/* 3. Banner Informasi Urgensi */}
-            <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-500/30 flex items-start gap-3">
-              <ShieldAlert className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-              <div className="space-y-0.5">
-                <span className="text-xs font-bold text-blue-900 dark:text-blue-200 block">
-                  Tingkat Urgensi Ditentukan oleh Tim TI
-                </span>
-                <p className="text-[11px] text-blue-700 dark:text-blue-300/90 leading-relaxed">
-                  Untuk menjamin objektivitas dan penanganan kasus darurat medis (P1 IGD/OK) tepat sasaran, skala prioritas tiket akan ditentukan langsung oleh staf TI saat tiket diterima.
-                </p>
-              </div>
-            </div>
           </div>
 
           {/* Kolom Kanan (Mobile: Bawah, Tablet & Desktop: Kanan 6-kolom): Deskripsi, Lampiran, Tombol */}
@@ -405,7 +394,18 @@ export default function TicketFormClient({
                           key={att.storedFilename}
                           className="relative group bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl p-3 flex items-center gap-3 overflow-hidden shadow-sm"
                         >
-                          <div className="w-11 h-11 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
+                          <div
+                            onClick={() =>
+                              setActiveMedia({
+                                id: att.storedFilename,
+                                fileType: att.fileType,
+                                storedFilename: att.storedFilename,
+                                originalName: att.originalName,
+                              })
+                            }
+                            className="w-11 h-11 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                            title="Klik untuk melihat pratinjau"
+                          >
                             {att.fileType === "IMAGE" ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
@@ -418,8 +418,19 @@ export default function TicketFormClient({
                             )}
                           </div>
 
-                          <div className="flex-1 min-w-0">
-                            <span className="text-xs font-semibold text-slate-800 dark:text-white block truncate">
+                          <div
+                            onClick={() =>
+                              setActiveMedia({
+                                id: att.storedFilename,
+                                fileType: att.fileType,
+                                storedFilename: att.storedFilename,
+                                originalName: att.originalName,
+                              })
+                            }
+                            className="flex-1 min-w-0 cursor-pointer"
+                            title="Klik untuk melihat pratinjau"
+                          >
+                            <span className="text-xs font-semibold text-slate-800 dark:text-white block truncate hover:text-sky-600 transition-colors">
                               {att.originalName}
                             </span>
                             <span className="text-[11px] text-slate-500 dark:text-slate-400 block">
@@ -466,6 +477,9 @@ export default function TicketFormClient({
           </div>
         </div>
       </form>
+
+      {/* Modal Penampil Foto & Video Responsif (Mobile / Tablet / PC) */}
+      <MediaViewerModal media={activeMedia} onClose={() => setActiveMedia(null)} />
     </div>
   );
 }

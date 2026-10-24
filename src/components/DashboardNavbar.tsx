@@ -3,9 +3,10 @@
 import React from "react";
 import { logoutAction } from "@/actions/auth";
 import { useRouter } from "next/navigation";
-import { LogOut, Activity, MapPin } from "lucide-react";
+import { LogOut, Activity, MapPin, Shield, BarChart3 } from "lucide-react";
 import { Role } from "@prisma/client";
 import ThemeToggle from "@/components/ThemeToggle";
+import RealtimeSync from "@/components/RealtimeSync";
 
 interface NavbarProps {
   user: {
@@ -15,9 +16,10 @@ interface NavbarProps {
     role: Role;
     departmentUnitName?: string;
   };
+  activeView?: "superadmin" | "management";
 }
 
-export default function DashboardNavbar({ user }: NavbarProps) {
+export default function DashboardNavbar({ user, activeView = "superadmin" }: NavbarProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -31,7 +33,7 @@ export default function DashboardNavbar({ user }: NavbarProps) {
       case Role.SUPERADMIN:
         return { label: "Super Admin TI", color: "bg-purple-50 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-400/30" };
       case Role.MANAGEMENT:
-        return { label: "Direksi & Manajemen RSBM", color: "bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-400/30" };
+        return { label: "Manajemen RSBM", color: "bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-400/30" };
       case Role.IT_STAFF:
         return { label: "Staf TI RSBM", color: "bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-400/30" };
       default:
@@ -43,7 +45,7 @@ export default function DashboardNavbar({ user }: NavbarProps) {
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white/90 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-white/10 px-3 sm:px-6 lg:px-8 py-3 shadow-sm dark:shadow-md transition-colors">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+      <div className="max-w-7xl xl:max-w-[1600px] mx-auto flex items-center justify-between gap-3">
         {/* Brand Identitas */}
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-sky-600/30 shrink-0">
@@ -75,8 +77,40 @@ export default function DashboardNavbar({ user }: NavbarProps) {
           </div>
         </div>
 
-        {/* Action Toggle Theme & Logout */}
+        {/* Switcher Mode Akses Khusus Super Admin */}
+        {user.role === Role.SUPERADMIN && (
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-white/10 text-xs">
+            <a
+              href="/dashboard"
+              className={`px-2.5 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 text-xs ${
+                activeView !== "management"
+                  ? "bg-purple-600 text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+              title="Pusat Administrasi & Keamanan Super Admin"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Pusat Super Admin</span>
+            </a>
+            <a
+              href="/dashboard?view=management"
+              className={`px-2.5 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 text-xs ${
+                activeView === "management"
+                  ? "bg-amber-600 text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400"
+              }`}
+              title="Portal Analitik & Mutu Manajemen RS"
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Portal Manajemen</span>
+            </a>
+          </div>
+        )}
+
+        {/* Action Realtime Status, Toggle Theme & Logout */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <RealtimeSync />
+
           <ThemeToggle />
 
           <button

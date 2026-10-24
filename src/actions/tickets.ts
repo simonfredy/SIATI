@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { createTicketSchema, updateTicketStatusSchema, rateTicketSchema } from "@/lib/validations";
 import { TicketStatus, TicketUrgency, AttachmentType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { broadcastRealtimeEvent } from "@/lib/realtime";
 
 export interface ActionResult<T = unknown> {
   success: boolean;
@@ -111,6 +112,10 @@ export async function createTicketAction(
           },
         },
       },
+      include: {
+        unit: true,
+        category: true,
+      },
     });
 
     // 4. Catat Audit Log
@@ -122,6 +127,21 @@ export async function createTicketAction(
         userAgent: "Browser",
         payload: { ticketNumber, urgency: validation.data.urgency },
       },
+    });
+
+    // 5. Siarkan Notifikasi Real-Time (SSE)
+    broadcastRealtimeEvent({
+      type: "TICKET_CREATED",
+      ticketId: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      urgency: ticket.urgency,
+      status: ticket.status,
+      unitName: ticket.unit.name,
+      categoryName: ticket.category.name,
+      reporterName: user.fullName,
+      title: "Tiket Aduan Baru Masuk",
+      message: `[${ticket.ticketNumber}] ${ticket.unit.name} - ${ticket.category.name} (${ticket.urgency})`,
+      timestamp: Date.now(),
     });
 
     revalidatePath("/dashboard");
@@ -253,6 +273,19 @@ export async function updateTicketStatusAction(data: {
       },
     });
 
+    // Siarkan Pembaruan Status Real-Time (SSE)
+    broadcastRealtimeEvent({
+      type: finalStatus === TicketStatus.RESOLVED || finalStatus === TicketStatus.CLOSED ? "TICKET_RESOLVED" : "TICKET_UPDATED",
+      ticketId: ticket.id,
+      ticketNumber: ticket.ticketNumber,
+      status: finalStatus,
+      urgency: (urgency || ticket.urgency) as string,
+      technicianName: user.fullName,
+      title: finalStatus === TicketStatus.RESOLVED ? "Tiket Berhasil Diselesaikan" : "Pembaruan Status Tiket",
+      message: `[${ticket.ticketNumber}] Status: ${finalStatus} (${user.fullName})`,
+      timestamp: Date.now(),
+    });
+
     revalidatePath("/dashboard");
     return { success: true, message: "Tiket berhasil diperbarui." };
   } catch (error) {
@@ -289,6 +322,15 @@ export async function rateTicketAction(data: {
         ratingScore: validation.data.ratingScore,
         feedback: validation.data.feedback,
       },
+    });
+
+    // Siarkan Event Penilaian Tiket (SSE)
+    broadcastRealtimeEvent({
+      type: "TICKET_RATED",
+      ticketId: validation.data.ticketId,
+      title: "Penilaian Layanan TI Masuk",
+      message: `Pelapor memberikan skor bintang ${validation.data.ratingScore} / 5.`,
+      timestamp: Date.now(),
     });
 
     revalidatePath("/dashboard");

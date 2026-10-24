@@ -19,7 +19,7 @@ async function main() {
     { name: "Rawat Inap Bangsal Melati", buildingZone: "Gedung Rawat Inap Lt. 2", qrIdentifier: "LOC-BANGSAL-MELATI" },
     { name: "Kasir & Pembayaran Pasien", buildingZone: "Gedung Utama Lt. 1", qrIdentifier: "LOC-KASIR-01" },
     { name: "Instalasi SIMRS & TI", buildingZone: "Gedung Manajemen Lt. 3", qrIdentifier: "LOC-IT-SIMRS" },
-    { name: "Direksi & Manajemen RSBM", buildingZone: "Gedung Manajemen Lt. 3", qrIdentifier: "LOC-DIREKSI-01" },
+    { name: "Manajemen RSBM", buildingZone: "Gedung Manajemen Lt. 3", qrIdentifier: "LOC-MANAJEMEN-01" },
   ];
 
   for (const u of unitsData) {
@@ -56,10 +56,10 @@ async function main() {
   }
   console.log("✅ 5 Master Kategori & Target SLA berhasil disiapkan.");
 
-  // Ambil unit IGD, IT, dan Direksi untuk akun percontohan
+  // Ambil unit IGD, IT, dan Manajemen untuk akun percontohan
   const itUnit = await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-IT-SIMRS" } });
   const igdUnit = await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-IGD-01" } });
-  const direksiUnit = await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-DIREKSI-01" } });
+  const manajemenUnit = (await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-MANAJEMEN-01" } })) || (await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-DIREKSI-01" } }));
 
   const defaultPasswordHash = await bcrypt.hash("Password123!", 12);
 
@@ -76,14 +76,24 @@ async function main() {
       departmentUnitId: itUnit!.id,
     },
     {
-      username: "direksi",
+      username: "manajemen",
       nip: "197805152003121002",
-      fullName: "Kombes Pol. dr. Martinus Ginting, Sp.P (Karumkit RSBM)",
+      fullName: "Kombes Pol. dr. Martinus Ginting, Sp.P (Manajemen RSBM)",
       phoneNumber: "08116000001",
       telegramChatId: "",
       role: Role.MANAGEMENT,
       passwordHash: defaultPasswordHash,
-      departmentUnitId: direksiUnit?.id || itUnit!.id,
+      departmentUnitId: manajemenUnit?.id || itUnit!.id,
+    },
+    {
+      username: "direksi",
+      nip: "197805152003121002",
+      fullName: "Kombes Pol. dr. Martinus Ginting, Sp.P (Manajemen RSBM)",
+      phoneNumber: "08116000001",
+      telegramChatId: "",
+      role: Role.MANAGEMENT,
+      passwordHash: defaultPasswordHash,
+      departmentUnitId: manajemenUnit?.id || itUnit!.id,
     },
     {
       username: "operator",
@@ -128,7 +138,7 @@ async function main() {
       create: usr,
     });
   }
-  console.log("✅ Akun percontohan (Superadmin, Direksi/Karumkit, Staf TI, Nakes) berhasil disiapkan.");
+  console.log("✅ Akun percontohan (Superadmin, Manajemen, Staf TI, Nakes) berhasil disiapkan.");
 
   // 4. Buat Tiket Contoh Realistis untuk Analitik Dasbor Manajemen & Pelayanan RS
   const existingTicketsCount = await prisma.ticket.count();

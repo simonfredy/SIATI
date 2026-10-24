@@ -16,6 +16,16 @@ import {
 } from "lucide-react";
 import { TicketStatus, TicketUrgency } from "@prisma/client";
 import { rateTicketAction } from "@/actions/tickets";
+import { motion, AnimatePresence } from "motion/react";
+import AnimatedCounter from "@/components/AnimatedCounter";
+import {
+  staggerContainerVariants,
+  cardItemVariants,
+  modalBackdropVariants,
+  modalContentVariants,
+  interactiveCardHover,
+} from "@/lib/motionVariants";
+import MediaViewerModal, { MediaAttachmentItem } from "@/components/MediaViewerModal";
 
 export interface TicketItem {
   id: string;
@@ -50,6 +60,7 @@ export default function ReporterView({ tickets, userName, unitName }: ReporterVi
   const [ratingFeedback, setRatingFeedback] = useState("");
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const [ratingSuccessMsg, setRatingSuccessMsg] = useState<string | null>(null);
+  const [activeMedia, setActiveMedia] = useState<MediaAttachmentItem | null>(null);
 
   // Filter statistik cepat
   const activeCount = tickets.filter(
@@ -145,37 +156,60 @@ export default function ReporterView({ tickets, userName, unitName }: ReporterVi
       </div>
 
       {/* Ringkasan Status Aduan - Responsive across Fold, Tablet, and Desktop */}
-      <div className="grid grid-cols-1 xs:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-5 lg:p-6 flex items-center gap-3.5 shadow-sm transition-colors">
+      <motion.div
+        variants={staggerContainerVariants}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-1 xs:grid-cols-3 gap-3 sm:gap-4 lg:gap-6"
+      >
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={interactiveCardHover}
+          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-5 lg:p-6 flex items-center gap-3.5 shadow-sm transition-colors"
+        >
           <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-xl bg-sky-100 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
             <Clock className="w-6 h-6 lg:w-7 lg:h-7" />
           </div>
           <div>
-            <span className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white block leading-tight">{activeCount}</span>
+            <span className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white block leading-tight">
+              <AnimatedCounter value={activeCount} />
+            </span>
             <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">Dalam Penanganan</span>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-5 lg:p-6 flex items-center gap-3.5 shadow-sm transition-colors">
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={interactiveCardHover}
+          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-5 lg:p-6 flex items-center gap-3.5 shadow-sm transition-colors"
+        >
           <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
             <CheckCircle2 className="w-6 h-6 lg:w-7 lg:h-7" />
           </div>
           <div>
-            <span className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white block leading-tight">{resolvedCount}</span>
+            <span className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white block leading-tight">
+              <AnimatedCounter value={resolvedCount} />
+            </span>
             <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">Selesai Ditangani</span>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-5 lg:p-6 flex items-center gap-3.5 shadow-sm transition-colors">
+        <motion.div
+          variants={cardItemVariants}
+          whileHover={interactiveCardHover}
+          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-5 lg:p-6 flex items-center gap-3.5 shadow-sm transition-colors"
+        >
           <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-xl bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
             <AlertTriangle className="w-6 h-6 lg:w-7 lg:h-7" />
           </div>
           <div>
-            <span className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white block leading-tight">{tickets.length}</span>
+            <span className="text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-white block leading-tight">
+              <AnimatedCounter value={tickets.length} />
+            </span>
             <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">Total Aduan Terkirim</span>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Daftar Tiket Aduan Saya */}
       <div className="space-y-3.5">
@@ -209,8 +243,10 @@ export default function ReporterView({ tickets, userName, unitName }: ReporterVi
               const statusBadge = getStatusBadge(ticket.status);
 
               return (
-                <div
+                <motion.div
                   key={ticket.id}
+                  variants={cardItemVariants}
+                  whileHover={interactiveCardHover}
                   className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-6 lg:p-7 shadow-sm hover:border-sky-400 dark:hover:border-sky-500/40 transition-all space-y-4"
                 >
                   {/* Baris Atas: Nomor Tiket & Badges */}
@@ -258,29 +294,31 @@ export default function ReporterView({ tickets, userName, unitName }: ReporterVi
                       </span>
                       <div className="flex flex-wrap gap-2">
                         {ticket.attachments.map((att) => (
-                          <div key={att.id}>
+                          <button
+                            key={att.id}
+                            type="button"
+                            onClick={() =>
+                              setActiveMedia({
+                                id: att.id,
+                                fileType: att.fileType as "IMAGE" | "VIDEO",
+                                storedFilename: att.storedFilename,
+                                originalName: att.originalName,
+                              })
+                            }
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all active:scale-95 shadow-sm cursor-pointer ${
+                              att.fileType === "IMAGE"
+                                ? "bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/30"
+                                : "bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30"
+                            }`}
+                            title="Klik untuk membuka pratinjau media di layar ini"
+                          >
                             {att.fileType === "IMAGE" ? (
-                              <a
-                                href={`/api/media/${att.storedFilename}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs text-sky-700 dark:text-sky-300 border border-slate-200 dark:border-white/10 transition-colors font-medium"
-                              >
-                                <ImageIcon className="w-4 h-4 text-sky-500" />
-                                <span>Lihat Foto Bukti</span>
-                              </a>
+                              <ImageIcon className="w-3.5 h-3.5 text-sky-500" />
                             ) : (
-                              <a
-                                href={`/api/media/${att.storedFilename}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs text-amber-700 dark:text-amber-300 border border-slate-200 dark:border-white/10 transition-colors font-medium"
-                              >
-                                <VideoIcon className="w-4 h-4 text-amber-500" />
-                                <span>Lihat Video Bukti</span>
-                              </a>
+                              <VideoIcon className="w-3.5 h-3.5 text-amber-500" />
                             )}
-                          </div>
+                            <span>Lihat {att.fileType === "IMAGE" ? "Foto Bukti" : "Video Bukti"}</span>
+                          </button>
                         ))}
                       </div>
                     </div>
@@ -324,7 +362,7 @@ export default function ReporterView({ tickets, userName, unitName }: ReporterVi
                       )}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -332,78 +370,95 @@ export default function ReporterView({ tickets, userName, unitName }: ReporterVi
       </div>
 
       {/* Modal Rating Bintang Interaktif */}
-      {ratingModalTicket && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl max-w-sm w-full p-6 space-y-5 shadow-2xl">
-            <div className="text-center space-y-1">
-              <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-2">
-                <Star className="w-6 h-6 fill-current" />
+      <AnimatePresence>
+        {ratingModalTicket && (
+          <motion.div
+            variants={modalBackdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              variants={modalContentVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl max-w-sm w-full p-6 space-y-5 shadow-2xl"
+            >
+              <div className="text-center space-y-1">
+                <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-2">
+                  <Star className="w-6 h-6 fill-current" />
+                </div>
+                <h4 className="text-base font-bold text-slate-900 dark:text-white">Beri Ulasan Layanan IT</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Tiket {ratingModalTicket.ticketNumber} telah selesai diperbaiki. Berikan penilaian Anda untuk peningkatan kualitas layanan.
+                </p>
               </div>
-              <h4 className="text-base font-bold text-slate-900 dark:text-white">Beri Ulasan Layanan IT</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Tiket {ratingModalTicket.ticketNumber} telah selesai diperbaiki. Berikan penilaian Anda untuk peningkatan kualitas layanan.
-              </p>
-            </div>
 
-            {ratingSuccessMsg ? (
-              <div className="p-3.5 bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/40 text-emerald-800 dark:text-emerald-300 rounded-xl text-center text-xs font-semibold">
-                {ratingSuccessMsg}
-              </div>
-            ) : (
-              <>
-                {/* Pilihan Bintang 1 - 5 */}
-                <div className="flex justify-center gap-2 pt-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
+              {ratingSuccessMsg ? (
+                <div className="p-3.5 bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/40 text-emerald-800 dark:text-emerald-300 rounded-xl text-center text-xs font-semibold">
+                  {ratingSuccessMsg}
+                </div>
+              ) : (
+                <>
+                  {/* Pilihan Bintang 1 - 5 */}
+                  <div className="flex justify-center gap-2 pt-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setSelectedStars(star)}
+                        className={`p-2 rounded-lg transition-transform hover:scale-110 ${
+                          selectedStars >= star ? "text-amber-500 dark:text-amber-400" : "text-slate-300 dark:text-slate-600"
+                        }`}
+                      >
+                        <Star className={`w-8 h-8 ${selectedStars >= star ? "fill-current" : ""}`} />
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Input Catatan Opsional */}
+                  <div className="space-y-1">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                      Catatan Masukan (Opsional)
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={ratingFeedback}
+                      onChange={(e) => setRatingFeedback(e.target.value)}
+                      placeholder="Contoh: Respon teknisi sangat cepat dan printer resep kembali lancar.."
+                      className="w-full p-3 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    />
+                  </div>
+
+                  {/* Tombol Simpan & Batal */}
+                  <div className="flex gap-2.5 pt-1">
                     <button
-                      key={star}
                       type="button"
-                      onClick={() => setSelectedStars(star)}
-                      className={`p-2 rounded-lg transition-transform hover:scale-110 ${
-                        selectedStars >= star ? "text-amber-500 dark:text-amber-400" : "text-slate-300 dark:text-slate-600"
-                      }`}
+                      onClick={() => setRatingModalTicket(null)}
+                      className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors"
                     >
-                      <Star className={`w-8 h-8 ${selectedStars >= star ? "fill-current" : ""}`} />
+                      Batal
                     </button>
-                  ))}
-                </div>
+                    <button
+                      type="button"
+                      disabled={isSubmittingRating}
+                      onClick={handleSendRating}
+                      className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs disabled:opacity-60 transition-colors shadow-sm"
+                    >
+                      {isSubmittingRating ? "Menyimpan..." : "Kirim Penilaian"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-                {/* Input Catatan Opsional */}
-                <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                    Catatan Masukan (Opsional)
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={ratingFeedback}
-                    onChange={(e) => setRatingFeedback(e.target.value)}
-                    placeholder="Contoh: Respon teknisi sangat cepat dan printer resep kembali lancar.."
-                    className="w-full p-3 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                  />
-                </div>
-
-                {/* Tombol Simpan & Batal */}
-                <div className="flex gap-2.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setRatingModalTicket(null)}
-                    className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isSubmittingRating}
-                    onClick={handleSendRating}
-                    className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs disabled:opacity-60 transition-colors shadow-sm"
-                  >
-                    {isSubmittingRating ? "Menyimpan..." : "Kirim Penilaian"}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Modal Penampil Foto & Video Responsif (Mobile / Tablet / PC) */}
+      <MediaViewerModal media={activeMedia} onClose={() => setActiveMedia(null)} />
     </div>
   );
 }

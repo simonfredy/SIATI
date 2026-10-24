@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { TicketStatus, TicketUrgency, Role } from "@prisma/client";
 import { updateTicketStatusAction } from "@/actions/tickets";
 import {
@@ -24,10 +25,19 @@ import {
   Hammer,
 } from "lucide-react";
 import { TicketItem } from "./ReporterView";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  staggerContainerVariants,
+  cardItemVariants,
+  modalBackdropVariants,
+  modalContentVariants,
+  interactiveCardHover,
+} from "@/lib/motionVariants";
+import MediaViewerModal, { MediaAttachmentItem } from "@/components/MediaViewerModal";
 
 interface ITStaffUnifiedViewProps {
   tickets: TicketItem[];
-  technicians: { id: string; fullName: string }[];
+  technicians?: { id: string; fullName: string }[];
   currentUserId: string;
   currentUserName: string;
   currentUserRole: Role;
@@ -40,9 +50,45 @@ export default function ITStaffUnifiedView({
   currentUserName,
   currentUserRole,
 }: ITStaffUnifiedViewProps) {
+  const router = useRouter();
+  const [localTickets, setLocalTickets] = useState<TicketItem[]>(tickets);
+
+  // Sinkronisasi data saat props tiket dari server berubah
+  useEffect(() => {
+    setLocalTickets(tickets);
+  }, [tickets]);
+
   // Mode Navigasi Utama: "MY_WORK" (Pengerjaan Saya) vs "HELPDESK_QUEUE" (Meja Antrean Seluruh RS)
-  const [mainView, setMainView] = useState<"MY_WORK" | "HELPDESK_QUEUE">("MY_WORK");
-  const [myWorkSubTab, setMyWorkSubTab] = useState<"ACTIVE" | "COMPLETED">("ACTIVE");
+  const [mainView, setMainViewState] = useState<"MY_WORK" | "HELPDESK_QUEUE">("MY_WORK");
+  const [myWorkSubTab, setMyWorkSubTabState] = useState<"ACTIVE" | "COMPLETED">("ACTIVE");
+
+  // Pulihkan tab aktif dari localStorage agar tidak reset saat navigasi
+  useEffect(() => {
+    try {
+      const savedMain = localStorage.getItem("siati_it_main_view");
+      if (savedMain === "MY_WORK" || savedMain === "HELPDESK_QUEUE") {
+        setMainViewState(savedMain);
+      }
+      const savedSub = localStorage.getItem("siati_it_sub_tab");
+      if (savedSub === "ACTIVE" || savedSub === "COMPLETED") {
+        setMyWorkSubTabState(savedSub);
+      }
+    } catch (_) {}
+  }, []);
+
+  const setMainView = (view: "MY_WORK" | "HELPDESK_QUEUE") => {
+    setMainViewState(view);
+    try {
+      localStorage.setItem("siati_it_main_view", view);
+    } catch (_) {}
+  };
+
+  const setMyWorkSubTab = (subTab: "ACTIVE" | "COMPLETED") => {
+    setMyWorkSubTabState(subTab);
+    try {
+      localStorage.setItem("siati_it_sub_tab", subTab);
+    } catch (_) {}
+  };
 
   const [isPending, startTransition] = useTransition();
   const [searchQuery, setSearchQuery] = useState("");
@@ -53,9 +99,10 @@ export default function ITStaffUnifiedView({
   // Modal Selesaikan Tiket
   const [resolveModalTicket, setResolveModalTicket] = useState<TicketItem | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState("");
+  const [activeMedia, setActiveMedia] = useState<MediaAttachmentItem | null>(null);
 
   // Filter Tiket untuk "Pengerjaan Saya"
-  const myActiveTickets = tickets.filter(
+  const myActiveTickets = localTickets.filter(
     (t) =>
       (t.status === TicketStatus.ASSIGNED ||
         t.status === TicketStatus.IN_PROGRESS ||
@@ -63,27 +110,27 @@ export default function ITStaffUnifiedView({
       t.assignedTechnician?.fullName === currentUserName
   );
 
-  const myCompletedTickets = tickets.filter(
+  const myCompletedTickets = localTickets.filter(
     (t) =>
       (t.status === TicketStatus.RESOLVED || t.status === TicketStatus.CLOSED) &&
       t.assignedTechnician?.fullName === currentUserName
   );
 
   // Antrean Baru belum di-assign
-  const unassignedTickets = tickets.filter(
+  const unassignedTickets = localTickets.filter(
     (t) => t.status === TicketStatus.SUBMITTED || (t.status === TicketStatus.ASSIGNED && !t.assignedTechnician)
   );
 
   // Metrik Ringkasan Helpdesk
-  const totalTickets = tickets.length;
-  const emergencyCount = tickets.filter(
+  const totalTickets = localTickets.length;
+  const emergencyCount = localTickets.filter(
     (t) =>
       t.urgency === TicketUrgency.EMERGENCY &&
       t.status !== TicketStatus.CLOSED &&
       t.status !== TicketStatus.RESOLVED
   ).length;
 
-  const ticketsWithResponse = tickets.filter((t) => t.responseMinutes !== null);
+  const ticketsWithResponse = localTickets.filter((t) => t.responseMinutes !== null);
   const avgResponseMins = ticketsWithResponse.length
     ? Math.round(
         ticketsWithResponse.reduce((acc, cur) => acc + (cur.responseMinutes || 0), 0) /
@@ -91,7 +138,7 @@ export default function ITStaffUnifiedView({
       )
     : 0;
 
-  const ticketsWithRepair = tickets.filter((t) => t.repairMinutes !== null);
+  const ticketsWithRepair = localTickets.filter((t) => t.repairMinutes !== null);
   const avgRepairMins = ticketsWithRepair.length
     ? Math.round(
         ticketsWithRepair.reduce((acc, cur) => acc + (cur.repairMinutes || 0), 0) /
@@ -100,7 +147,7 @@ export default function ITStaffUnifiedView({
     : 0;
 
   // Filter tiket di meja antrean Helpdesk
-  const filteredHelpdeskTickets = tickets.filter((t) => {
+  const filteredHelpdeskTickets = localTickets.filter((t) => {
     const matchSearch =
       t.ticketNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.unit.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -116,6 +163,22 @@ export default function ITStaffUnifiedView({
   // Action: Ambil & Kerjakan Sendiri (1-Klik Self Assign)
   const handleTakeAndWorkMyself = (ticketId: string) => {
     setActionError(null);
+    // Optimistic update lokal langsung
+    setLocalTickets((prev) =>
+      prev.map((t) =>
+        t.id === ticketId
+          ? {
+              ...t,
+              status: TicketStatus.ASSIGNED,
+              assignedTechnician: { fullName: currentUserName },
+            }
+          : t
+      )
+    );
+
+    setMainView("MY_WORK");
+    setMyWorkSubTab("ACTIVE");
+
     startTransition(async () => {
       const res = await updateTicketStatusAction({
         ticketId,
@@ -125,11 +188,10 @@ export default function ITStaffUnifiedView({
       });
 
       if (res.success) {
-        setMainView("MY_WORK");
-        setMyWorkSubTab("ACTIVE");
-        window.location.reload();
+        router.refresh();
       } else {
         setActionError(res.message || "Gagal mengambil tiket.");
+        router.refresh();
       }
     });
   };
@@ -141,6 +203,11 @@ export default function ITStaffUnifiedView({
     notes?: string
   ) => {
     setActionError(null);
+    // Optimistic update lokal langsung
+    setLocalTickets((prev) =>
+      prev.map((t) => (t.id === ticketId ? { ...t, status: newStatus } : t))
+    );
+
     startTransition(async () => {
       const res = await updateTicketStatusAction({
         ticketId,
@@ -152,16 +219,23 @@ export default function ITStaffUnifiedView({
       if (res.success) {
         setResolveModalTicket(null);
         setResolutionNotes("");
-        window.location.reload();
+        router.refresh();
       } else {
         setActionError(res.message || "Gagal mengubah status pengerjaan.");
+        router.refresh();
       }
     });
   };
 
-  // Action: Ubah Urgensi
+  // Action: Ubah Urgensi (Tetap di Tab Antrean tanpa Terpental atau Reload Halaman!)
   const handleUpdateUrgency = (ticketId: string, newUrgency: TicketUrgency) => {
     setActionError(null);
+    // 1. Optimistic update langsung di state lokal antrean
+    setLocalTickets((prev) =>
+      prev.map((t) => (t.id === ticketId ? { ...t, urgency: newUrgency } : t))
+    );
+
+    // 2. Kirim update ke server di latar belakang tanpa reload halaman
     startTransition(async () => {
       const res = await updateTicketStatusAction({
         ticketId,
@@ -170,32 +244,14 @@ export default function ITStaffUnifiedView({
       });
 
       if (res.success) {
-        window.location.reload();
+        router.refresh(); // Sinkronisasi cache Server Component tanpa me-reset tab!
       } else {
         setActionError(res.message || "Gagal mengubah tingkat urgensi.");
+        router.refresh();
       }
     });
   };
 
-  // Action: Helpdesk Assign ke Teknisi Lain
-  const handleAssignOtherTech = (ticketId: string, techId: string) => {
-    if (!techId) return;
-    setActionError(null);
-    startTransition(async () => {
-      const res = await updateTicketStatusAction({
-        ticketId,
-        newStatus: TicketStatus.ASSIGNED,
-        assignedTechnicianId: techId,
-        notes: "Penugasan dari meja kendali TI.",
-      });
-
-      if (res.success) {
-        window.location.reload();
-      } else {
-        setActionError(res.message || "Gagal menugaskan teknisi.");
-      }
-    });
-  };
 
   const getUrgencyBadgeColor = (urgency: TicketUrgency) => {
     switch (urgency) {
@@ -295,6 +351,36 @@ export default function ITStaffUnifiedView({
       {/* ========================================================================= */}
       {mainView === "MY_WORK" && (
         <div className="space-y-5">
+          {/* Banner Peringatan Tiket Baru Masuk yang Belum Diambil */}
+          {unassignedTickets.length > 0 && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-sky-500/10 border border-rose-500/30 dark:border-rose-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm animate-in fade-in duration-300">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 border border-rose-500/30">
+                  <Zap className="w-5 h-5 fill-current" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>{unassignedTickets.length} Tiket Baru Masuk Menunggu Penanganan</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-600 text-white font-extrabold animate-pulse">
+                      Siap Diambil
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                    Ada aduan baru dari unit rumah sakit yang belum diambil oleh staf TI mana pun.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMainView("HELPDESK_QUEUE")}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5 self-start sm:self-auto shrink-0"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                <span>Lihat Antrean & Ambil ({unassignedTickets.length})</span>
+              </button>
+            </div>
+          )}
+
           {/* Sub Tab: Aktif vs Selesai */}
           <div className="flex border-b border-slate-200 dark:border-white/10 gap-2 pb-2 overflow-x-auto no-scrollbar">
             <button
@@ -345,8 +431,18 @@ export default function ITStaffUnifiedView({
                   const isOverdue = ticket.urgency === TicketUrgency.EMERGENCY && elapsedMins > 10;
 
                   return (
-                    <div
+                    <motion.div
                       key={ticket.id}
+                      variants={cardItemVariants}
+                      whileHover={interactiveCardHover}
+                      animate={ticket.urgency === TicketUrgency.EMERGENCY ? {
+                        boxShadow: [
+                          "0 0 0 0px rgba(244, 63, 94, 0)",
+                          "0 0 0 4px rgba(244, 63, 94, 0.25)",
+                          "0 0 0 0px rgba(244, 63, 94, 0)",
+                        ],
+                        transition: { repeat: Infinity, duration: 2.2, ease: "easeInOut" }
+                      } : undefined}
                       className={`bg-white dark:bg-slate-900 border rounded-2xl p-4 sm:p-5 lg:p-6 shadow-sm transition-all ${
                         isOverdue
                           ? "border-rose-400 dark:border-rose-500/70 shadow-rose-100 dark:shadow-rose-950/40"
@@ -400,16 +496,31 @@ export default function ITStaffUnifiedView({
                               </span>
                               <div className="flex flex-wrap gap-2">
                                 {ticket.attachments.map((att) => (
-                                  <a
+                                  <button
                                     key={att.id}
-                                    href={`/api/media/${att.storedFilename}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-xs text-sky-700 dark:text-sky-300 border border-slate-200 dark:border-white/10 font-medium transition-colors"
+                                    type="button"
+                                    onClick={() =>
+                                      setActiveMedia({
+                                        id: att.id,
+                                        fileType: att.fileType as "IMAGE" | "VIDEO",
+                                        storedFilename: att.storedFilename,
+                                        originalName: att.originalName,
+                                      })
+                                    }
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all active:scale-95 shadow-sm cursor-pointer ${
+                                      att.fileType === "IMAGE"
+                                        ? "bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/30"
+                                        : "bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30"
+                                    }`}
+                                    title="Klik untuk membuka pratinjau media di layar ini"
                                   >
-                                    {att.fileType === "IMAGE" ? <ImageIcon className="w-3.5 h-3.5 text-sky-500" /> : <VideoIcon className="w-3.5 h-3.5 text-amber-500" />}
-                                    <span>Lihat {att.fileType === "IMAGE" ? "Foto" : "Video"}</span>
-                                  </a>
+                                    {att.fileType === "IMAGE" ? (
+                                      <ImageIcon className="w-3.5 h-3.5 text-sky-500" />
+                                    ) : (
+                                      <VideoIcon className="w-3.5 h-3.5 text-amber-500" />
+                                    )}
+                                    <span>Lihat {att.fileType === "IMAGE" ? "Foto Bukti" : "Video Bukti"}</span>
+                                  </button>
                                 ))}
                               </div>
                             </div>
@@ -504,7 +615,7 @@ export default function ITStaffUnifiedView({
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })
               )}
@@ -673,11 +784,21 @@ export default function ITStaffUnifiedView({
           <div className="space-y-4">
             {filteredHelpdeskTickets.map((ticket) => {
               const urgencyColor = getUrgencyBadgeColor(ticket.urgency);
-              const isUnassigned = ticket.status === TicketStatus.SUBMITTED;
+              const isUnassigned = ticket.status === TicketStatus.SUBMITTED || !ticket.assignedTechnician;
 
               return (
-                <div
+                <motion.div
                   key={ticket.id}
+                  variants={cardItemVariants}
+                  whileHover={interactiveCardHover}
+                  animate={ticket.urgency === TicketUrgency.EMERGENCY ? {
+                    boxShadow: [
+                      "0 0 0 0px rgba(244, 63, 94, 0)",
+                      "0 0 0 4px rgba(244, 63, 94, 0.25)",
+                      "0 0 0 0px rgba(244, 63, 94, 0)",
+                    ],
+                    transition: { repeat: Infinity, duration: 2.2, ease: "easeInOut" }
+                  } : undefined}
                   className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-5 lg:p-6 shadow-sm transition-colors space-y-4"
                 >
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 lg:items-start">
@@ -721,16 +842,31 @@ export default function ITStaffUnifiedView({
                       {ticket.attachments && ticket.attachments.length > 0 && (
                         <div className="flex flex-wrap gap-2 pt-0.5">
                           {ticket.attachments.map((att) => (
-                            <a
+                            <button
                               key={att.id}
-                              href={`/api/media/${att.storedFilename}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-xs text-sky-600 dark:text-sky-400 font-medium transition-colors"
+                              type="button"
+                              onClick={() =>
+                                setActiveMedia({
+                                  id: att.id,
+                                  fileType: att.fileType as "IMAGE" | "VIDEO",
+                                  storedFilename: att.storedFilename,
+                                  originalName: att.originalName,
+                                })
+                              }
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all active:scale-95 shadow-sm cursor-pointer ${
+                                att.fileType === "IMAGE"
+                                  ? "bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/10 dark:hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/30"
+                                  : "bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30"
+                              }`}
+                              title="Klik untuk membuka pratinjau media di layar ini"
                             >
-                              {att.fileType === "IMAGE" ? <ImageIcon className="w-3.5 h-3.5" /> : <VideoIcon className="w-3.5 h-3.5" />}
-                              Lampiran {att.fileType}
-                            </a>
+                              {att.fileType === "IMAGE" ? (
+                                <ImageIcon className="w-3.5 h-3.5 text-sky-500" />
+                              ) : (
+                                <VideoIcon className="w-3.5 h-3.5 text-amber-500" />
+                              )}
+                              <span>Lihat {att.fileType === "IMAGE" ? "Foto Bukti" : "Video Bukti"}</span>
+                            </button>
                           ))}
                         </div>
                       )}
@@ -786,44 +922,50 @@ export default function ITStaffUnifiedView({
                         </select>
                       </div>
 
-                      {/* 1-Klik Ambil & Kerjakan Sendiri */}
-                      {isUnassigned && (
+                      {/* Aksi Penanganan Tiket (Mandiri / Status Penangan) */}
+                      {isUnassigned ? (
                         <div className="pt-1">
                           <button
                             disabled={isPending}
                             onClick={() => handleTakeAndWorkMyself(ticket.id)}
-                            className="w-full py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-sky-600/20 transition-all"
-                            title="Ambil tiket ini dan tugaskan langsung ke diri sendiri"
+                            className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-sky-600/25 transition-all disabled:opacity-60"
+                            title="Ambil tiket ini untuk Anda tangani segera"
                           >
                             <Zap className="w-4 h-4 fill-current" />
-                            Ambil & Kerjakan Sendiri
+                            Ambil & Tangani Tiket Ini
                           </button>
                         </div>
+                      ) : ticket.assignedTechnician?.fullName === currentUserName ? (
+                        <div className="pt-1 p-3 rounded-xl bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/30 text-sky-800 dark:text-sky-300 text-xs flex items-center justify-between gap-2">
+                          <span className="font-bold flex items-center gap-1.5">
+                            <UserCheck className="w-4 h-4 text-sky-600 shrink-0" />
+                            Sedang Anda Tangani
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMainView("MY_WORK");
+                              setMyWorkSubTab("ACTIVE");
+                            }}
+                            className="text-[11px] underline font-bold hover:text-sky-900 dark:hover:text-sky-100 shrink-0"
+                          >
+                            Buka di Tugas Saya &rarr;
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="pt-1 p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 text-xs flex items-center gap-2.5">
+                          <UserCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <div className="min-w-0">
+                            <span className="text-[10px] text-slate-400 block font-medium">Sedang Ditangani Oleh:</span>
+                            <span className="font-bold text-slate-900 dark:text-white truncate block">
+                              {ticket.assignedTechnician?.fullName || "Teknisi Lain"}
+                            </span>
+                          </div>
+                        </div>
                       )}
-
-                      {/* Dispatch ke Teknisi Lain */}
-                      <div className="space-y-1 pt-1">
-                        <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                          <UserCheck className="w-3.5 h-3.5 text-slate-400" />
-                          Oper Penugasan:
-                        </label>
-                        <select
-                          disabled={isPending}
-                          value={ticket.assignedTechnician?.fullName || ""}
-                          onChange={(e) => handleAssignOtherTech(ticket.id, e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
-                        >
-                          <option value="" disabled>-- Pilih Rekan Teknisi --</option>
-                          {technicians.map((tech) => (
-                            <option key={tech.id} value={tech.id}>
-                              {tech.fullName}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -831,53 +973,70 @@ export default function ITStaffUnifiedView({
       )}
 
       {/* Modal Konfirmasi Selesai & Input Catatan Tindakan */}
-      {resolveModalTicket && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div>
-              <h4 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                Konfirmasi Penyelesaian Masalah
-              </h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Tiket {resolveModalTicket.ticketNumber} ({resolveModalTicket.unit.name}). Stopwatch perbaikan akan dihentikan dan total menit dihitung otomatis.
-              </p>
-            </div>
+      <AnimatePresence>
+        {resolveModalTicket && (
+          <motion.div
+            variants={modalBackdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              variants={modalContentVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl"
+            >
+              <div>
+                <h4 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  Konfirmasi Penyelesaian Masalah
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Tiket {resolveModalTicket.ticketNumber} ({resolveModalTicket.unit.name}). Stopwatch perbaikan akan dihentikan dan total menit dihitung otomatis.
+                </p>
+              </div>
 
-            <div className="space-y-1">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                Catatan Tindakan Teknis yang Dilakukan:
-              </label>
-              <textarea
-                rows={3}
-                required
-                value={resolutionNotes}
-                onChange={(e) => setResolutionNotes(e.target.value)}
-                placeholder="Contoh: Mengganti roller penarik kertas printer, bersihkan head nozzle, uji cetak resep dan antrean berhasil normal."
-                className="w-full p-3 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  Catatan Tindakan Teknis yang Dilakukan:
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  value={resolutionNotes}
+                  onChange={(e) => setResolutionNotes(e.target.value)}
+                  placeholder="Contoh: Mengganti roller penarik kertas printer, bersihkan head nozzle, uji cetak resep dan antrean berhasil normal."
+                  className="w-full p-3 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
 
-            <div className="flex gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setResolveModalTicket(null)}
-                className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                disabled={isPending || !resolutionNotes.trim()}
-                onClick={() => handleUpdateStatus(resolveModalTicket.id, TicketStatus.RESOLVED, resolutionNotes)}
-                className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs disabled:opacity-50 transition-colors shadow-sm"
-              >
-                {isPending ? "Memproses..." : "Tandai Selesai & Tutup"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setResolveModalTicket(null)}
+                  className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={isPending || !resolutionNotes.trim()}
+                  onClick={() => handleUpdateStatus(resolveModalTicket.id, TicketStatus.RESOLVED, resolutionNotes)}
+                  className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs disabled:opacity-50 transition-colors shadow-sm"
+                >
+                  {isPending ? "Memproses..." : "Tandai Selesai & Tutup"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Penampil Foto & Video Responsif (Mobile / Tablet / PC) */}
+      <MediaViewerModal media={activeMedia} onClose={() => setActiveMedia(null)} />
     </div>
   );
 }
