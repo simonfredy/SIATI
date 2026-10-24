@@ -333,129 +333,43 @@ Skenario ini ideal jika rumah sakit telah memiliki server berbasis Apache HTTP S
 
 ---
 
-### 🔹 Skenario 4: Menggunakan PM2, Nginx lalu Apache (Nginx Front-End Edge -> Apache Core -> PM2)
+### 🔹 Skenario 4: Menggunakan PM2, Nginx lalu Apache (1. Apache Terluar -> 2. Nginx -> 3. PM2)
 
-Arsitektur enterprise di mana **Nginx berada di baris paling depan (Port 80/443)** bertindak sebagai Reverse Proxy Edge Accelerator (menangani SSL Offloading, mitigasi DoS, caching static, dan rate-limiting), lalu mem-forward request ke **Apache (Port 8080)**, dan Apache meneruskannya ke **PM2 Next.js (Port 3000)**. Sangat populer pada sistem cPanel/WHM atau server multi-aplikasi rumah sakit.
-
-```
-[ Klien Publik / Nakes ]
-          │ HTTPS: 443 / HTTP: 80
-          ▼
-[ NGINX Front-End Edge (Port 80 & 443) ]
-  ├─ Terminasi SSL / TLS
-  ├─ Anti-DDoS & Rate Limiting
-  └─ Proxy Pass ke 127.0.0.1:8080
-          │ HTTP (Port 8080)
-          ▼
-[ APACHE Web Core (Port 8080) ]
-  ├─ VirtualHost Internal
-  └─ Proxy Pass ke 127.0.0.1:3000
-          │ HTTP (Port 3000)
-          ▼
-[ PM2 Process Manager: Next.js (127.0.0.1:3000) ]
-```
-
-#### Langkah-langkah Konfigurasi:
-1. **Ubah Port Apache ke 8080**:
-   Edit berkas `/etc/apache2/ports.conf`:
-   ```apache
-   Listen 127.0.0.1:8080
-   ```
-   Sesuaikan VirtualHost di `/etc/apache2/sites-available/siati-internal.conf`:
-   ```apache
-   <VirtualHost 127.0.0.1:8080>
-       ServerName siati.rumahsakit.co.id
-       ProxyPreserveHost On
-       ProxyPass / http://127.0.0.1:3000/
-       ProxyPassReverse / http://127.0.0.1:3000/
-   </VirtualHost>
-   ```
-   Aktifkan site dan restart Apache:
-   ```bash
-   sudo a2ensite siati-internal.conf
-   sudo systemctl restart apache2
-   ```
-
-2. **Konfigurasi Nginx di Port 80 & 443**:
-   Buat konfigurasi di `/etc/nginx/sites-available/siati-edge.conf`:
-   ```nginx
-   server {
-       listen 80;
-       server_name siati.rumahsakit.co.id;
-       return 301 https://$host$request_uri;
-   }
-
-   server {
-       listen 443 ssl http2;
-       server_name siati.rumahsakit.co.id;
-
-       ssl_certificate /etc/letsencrypt/live/siati.rumahsakit.co.id/fullchain.pem;
-       ssl_certificate_key /etc/letsencrypt/live/siati.rumahsakit.co.id/privkey.pem;
-
-       client_max_body_size 60M;
-
-       # Forward seluruh request ke Apache Port 8080
-       location / {
-           proxy_pass http://127.0.0.1:8080;
-           proxy_http_version 1.1;
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-           proxy_set_header X-Forwarded-Proto $scheme;
-       }
-
-       # Khusus Real-Time SSE Stream, bypass langsung ke Next.js atau via Apache tanpa buffering
-       location /api/realtime {
-           proxy_pass http://127.0.0.1:8080/api/realtime;
-           proxy_buffering off;
-           proxy_cache off;
-           proxy_read_timeout 24h;
-       }
-   }
-   ```
-   Aktifkan dan muat ulang Nginx:
-   ```bash
-   sudo ln -s /etc/nginx/sites-available/siati-edge.conf /etc/nginx/sites-enabled/
-   sudo nginx -t && sudo systemctl reload nginx
-   ```
-
-3. **Pastikan PM2 berjalan**:
-   ```bash
-   pm2 restart siati-app
-   ```
-
----
-
-### 🔹 Skenario 5: Menggunakan PM2, Apache lalu Nginx (Apache Front-End Edge -> Nginx Shield -> PM2)
-
-Arsitektur di mana **Apache menduduki gerbang luar (Port 80/443)** (misalnya karena server rumah sakit telah memiliki firewall aplikasi **ModSecurity / OWASP Core Rule Set** di Apache), lalu Apache mem-forward request ke **Nginx di Port 8080** yang berfungsi sebagai reverse proxy internal berkecepatan tinggi serta mengamankan streaming SSE dan media storage, sebelum akhirnya diteruskan ke **PM2 Next.js (Port 3000)**.
+Arsitektur multi-tier di mana susunannya dari terluar hingga terdalam adalah:
+1. **Apache (Terluar / Front-End Edge Gateway - Port 80 & 443)**: Menerima trafik langsung dari klien/internet, menangani terminasi SSL HTTPS atau Web Application Firewall (WAF) ModSecurity rumah sakit.
+2. **Nginx (Tengah / Reverse Proxy & Media Shield - Port 8080)**: Lapisan perantara berkecepatan tinggi yang menangani bypass buffering untuk streaming Server-Sent Events (SSE) `/api/realtime` dan isolasi penyimpanan berkas media (`X-Accel-Redirect`).
+3. **PM2 (Aplikasi Inti - Port 3000)**: Menjalankan engine Next.js di background pada `127.0.0.1:3000`.
 
 ```
 [ Klien Publik / Nakes ]
           │ HTTPS: 443 / HTTP: 80
           ▼
-[ APACHE Front-End Edge (Port 80 & 443) ]
-  ├─ Terminasi SSL & Web Application Firewall (ModSecurity)
-  └─ Proxy Pass ke 127.0.0.1:8080
+1. [ APACHE Terluar (Front-End Edge Port 80 & 443) ]
+     ├─ Terminasi SSL & WAF (ModSecurity)
+     └─ Proxy Pass ke 127.0.0.1:8080
           │ HTTP (Port 8080)
           ▼
-[ NGINX Internal Shield (Port 8080) ]
-  ├─ Penanganan SSE Streaming Tanpa Buffering
-  ├─ X-Accel-Redirect Protected Media Storage
-  └─ Proxy Pass ke 127.0.0.1:3000
+2. [ NGINX Lapisan Tengah (Internal Shield Port 8080) ]
+     ├─ SSE Stream Buffering Bypass (/api/realtime)
+     ├─ X-Accel-Redirect Protected Media Storage
+     └─ Proxy Pass ke 127.0.0.1:3000
           │ HTTP (Port 3000)
           ▼
-[ PM2 Process Manager: Next.js (127.0.0.1:3000) ]
+3. [ PM2 Process Manager: Next.js (127.0.0.1:3000) ]
 ```
 
 #### Langkah-langkah Konfigurasi:
 1. **Konfigurasi Nginx Internal di Port 8080**:
-   Buat berkas `/etc/nginx/sites-available/siati-internal.conf`:
+   Salin berkas template [`deploy/nginx/siati-internal.conf`](file:///c:/laragon/www/SIATI/deploy/nginx/siati-internal.conf) ke server:
+   ```bash
+   sudo cp /var/www/siati/deploy/nginx/siati-internal.conf /etc/nginx/sites-available/siati-internal.conf
+   sudo ln -s /etc/nginx/sites-available/siati-internal.conf /etc/nginx/sites-enabled/
+   ```
+   Cuplikan Nginx Internal (`127.0.0.1:8080`):
    ```nginx
    server {
        listen 127.0.0.1:8080;
        server_name siati.rumahsakit.co.id;
-
        client_max_body_size 60M;
 
        # Storage Terlindungi X-Accel-Redirect untuk Foto/Video Medis
@@ -464,7 +378,7 @@ Arsitektur di mana **Apache menduduki gerbang luar (Port 80/443)** (misalnya kar
            alias /var/siati/media/;
        }
 
-       # Real-Time SSE Stream
+       # Real-Time SSE Stream (Tanpa Buffering)
        location /api/realtime {
            proxy_pass http://127.0.0.1:3000/api/realtime;
            proxy_http_version 1.1;
@@ -484,20 +398,19 @@ Arsitektur di mana **Apache menduduki gerbang luar (Port 80/443)** (misalnya kar
        }
    }
    ```
-   Aktifkan dan restart Nginx:
+   Uji dan restart Nginx:
    ```bash
-   sudo ln -s /etc/nginx/sites-available/siati-internal.conf /etc/nginx/sites-enabled/
    sudo nginx -t && sudo systemctl restart nginx
    ```
 
-2. **Konfigurasi Apache Front-End di Port 80 & 443**:
-   Edit berkas `/etc/apache2/sites-available/siati-frontend.conf`:
+2. **Konfigurasi Apache Front-End Terluar di Port 80 & 443**:
+   Salin berkas template [`deploy/apache/siati-frontend.conf`](file:///c:/laragon/www/SIATI/deploy/apache/siati-frontend.conf) ke server:
+   ```bash
+   sudo cp /var/www/siati/deploy/apache/siati-frontend.conf /etc/apache2/sites-available/siati-frontend.conf
+   sudo a2ensite siati-frontend.conf
+   ```
+   Cuplikan Apache Terluar (`*:443`):
    ```apache
-   <VirtualHost *:80>
-       ServerName siati.rumahsakit.co.id
-       Redirect permanent / https://siati.rumahsakit.co.id/
-   </VirtualHost>
-
    <VirtualHost *:443>
        ServerName siati.rumahsakit.co.id
 
@@ -509,28 +422,135 @@ Arsitektur di mana **Apache menduduki gerbang luar (Port 80/443)** (misalnya kar
        ProxyRequests Off
        RequestHeader set X-Forwarded-Proto "https"
 
-       # Stream SSE tanpa buffering
+       # Stream Realtime SSE tanpa buffering
        <Location "/api/realtime">
            ProxyPass http://127.0.0.1:8080/api/realtime flushpackets=on
            ProxyPassReverse http://127.0.0.1:8080/api/realtime
            SetEnv no-gzip 1
        </Location>
 
-       # Meneruskan seluruh request ke Nginx Internal di Port 8080
+       # Meneruskan seluruh request ke Nginx Lapisan Tengah di Port 8080
        ProxyPass / http://127.0.0.1:8080/
        ProxyPassReverse / http://127.0.0.1:8080/
    </VirtualHost>
    ```
-   Aktifkan dan muat ulang Apache:
+   Uji sintaks dan restart Apache:
    ```bash
-   sudo a2ensite siati-frontend.conf
    sudo apache2ctl configtest
-   sudo systemctl reload apache2
+   sudo systemctl restart apache2
    ```
 
-3. **Pastikan PM2 berjalan**:
+3. **Jalankan Aplikasi dengan PM2**:
    ```bash
-   pm2 restart siati-app
+   cd /var/www/siati
+   pm2 start deploy/ecosystem.config.js
+   pm2 save
+   ```
+
+---
+
+### 🔹 Skenario 5: Menggunakan PM2, Apache lalu Nginx (1. Nginx Terluar -> 2. Apache -> 3. PM2)
+
+Arsitektur multi-tier di mana susunannya dari terluar hingga terdalam adalah:
+1. **Nginx (Terluar / Front-End Edge Gateway - Port 80 & 443)**: Berada di baris paling luar menerima trafik langsung dari klien/internet, menangani terminasi SSL TLS 1.3, HTTP/2, mitigasi DoS, caching aset statis, dan rate-limiting.
+2. **Apache (Tengah / Web Server Core - Port 8080)**: Lapisan perantara internal yang menjalankan VirtualHost Apache pada port 8080.
+3. **PM2 (Aplikasi Inti - Port 3000)**: Menjalankan engine Next.js di background pada `127.0.0.1:3000`.
+
+```
+[ Klien Publik / Nakes ]
+          │ HTTPS: 443 / HTTP: 80
+          ▼
+1. [ NGINX Terluar (Front-End Edge Port 80 & 443) ]
+     ├─ Terminasi SSL TLS 1.3 & HTTP/2
+     ├─ Anti-DDoS & Rate Limiting
+     └─ Proxy Pass ke 127.0.0.1:8080
+          │ HTTP (Port 8080)
+          ▼
+2. [ APACHE Lapisan Tengah (Internal Core Port 8080) ]
+     ├─ VirtualHost Internal & Modul Khusus RS
+     └─ Proxy Pass ke 127.0.0.1:3000
+          │ HTTP (Port 3000)
+          ▼
+3. [ PM2 Process Manager: Next.js (127.0.0.1:3000) ]
+```
+
+#### Langkah-langkah Konfigurasi:
+1. **Ubah Apache agar Mendengarkan di Port Internal 8080**:
+   Edit berkas `/etc/apache2/ports.conf`:
+   ```apache
+   Listen 127.0.0.1:8080
+   ```
+   Salin berkas template [`deploy/apache/siati-internal.conf`](file:///c:/laragon/www/SIATI/deploy/apache/siati-internal.conf) ke server:
+   ```bash
+   sudo cp /var/www/siati/deploy/apache/siati-internal.conf /etc/apache2/sites-available/siati-internal.conf
+   sudo a2ensite siati-internal.conf
+   ```
+   Cuplikan Apache Internal (`127.0.0.1:8080`):
+   ```apache
+   <VirtualHost 127.0.0.1:8080>
+       ServerName siati.rumahsakit.co.id
+       ProxyPreserveHost On
+       ProxyPass / http://127.0.0.1:3000/
+       ProxyPassReverse / http://127.0.0.1:3000/
+   </VirtualHost>
+   ```
+   Restart Apache:
+   ```bash
+   sudo systemctl restart apache2
+   ```
+
+2. **Konfigurasi Nginx Front-End Terluar di Port 80 & 443**:
+   Salin berkas template [`deploy/nginx/siati-edge.conf`](file:///c:/laragon/www/SIATI/deploy/nginx/siati-edge.conf) ke server:
+   ```bash
+   sudo cp /var/www/siati/deploy/nginx/siati-edge.conf /etc/nginx/sites-available/siati-edge.conf
+   sudo ln -s /etc/nginx/sites-available/siati-edge.conf /etc/nginx/sites-enabled/
+   ```
+   Cuplikan Nginx Terluar (`*:443`):
+   ```nginx
+   server {
+       listen 80;
+       server_name siati.rumahsakit.co.id;
+       return 301 https://$host$request_uri;
+   }
+
+   server {
+       listen 443 ssl http2;
+       server_name siati.rumahsakit.co.id;
+
+       ssl_certificate /etc/letsencrypt/live/siati.rumahsakit.co.id/fullchain.pem;
+       ssl_certificate_key /etc/letsencrypt/live/siati.rumahsakit.co.id/privkey.pem;
+
+       client_max_body_size 60M;
+
+       # Forwarding Utama ke Apache Port 8080
+       location / {
+           proxy_pass http://127.0.0.1:8080;
+           proxy_http_version 1.1;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+
+       # Real-Time SSE Stream, bypass tanpa buffering
+       location /api/realtime {
+           proxy_pass http://127.0.0.1:8080/api/realtime;
+           proxy_buffering off;
+           proxy_cache off;
+           proxy_read_timeout 24h;
+       }
+   }
+   ```
+   Uji dan reload Nginx:
+   ```bash
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+
+3. **Jalankan Aplikasi dengan PM2**:
+   ```bash
+   cd /var/www/siati
+   pm2 start deploy/ecosystem.config.js
+   pm2 save
    ```
 
 ---
