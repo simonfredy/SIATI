@@ -385,7 +385,7 @@ export default function SuperadminView({
       case Role.SUPERADMIN:
         return { label: "Super Admin TI", color: "bg-purple-100 dark:bg-purple-500/20 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-400/30" };
       case Role.IT_STAFF:
-        return { label: "Staf TI RSBM", color: "bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-400/30" };
+        return { label: "Staf TI", color: "bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-400/30" };
       case Role.MANAGEMENT:
         return { label: "Manajemen", color: "bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-400/30" };
       default:
@@ -813,7 +813,7 @@ export default function SuperadminView({
           <div className="space-y-1.5">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-400/30 backdrop-blur-sm">
               <Shield className="w-3.5 h-3.5 text-purple-400" />
-              Portal Pengendali Tertinggi SIATI RSBM
+              Portal Pengendali Tertinggi SIATI
             </div>
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight">
               Pusat Administrasi & Keamanan Sistem
@@ -1035,7 +1035,7 @@ export default function SuperadminView({
               >
                 <option value="ALL">Semua Peran (Role)</option>
                 <option value="SUPERADMIN">Super Admin TI</option>
-                <option value="IT_STAFF">Staf TI RSBM</option>
+                <option value="IT_STAFF">Staf TI</option>
                 <option value="STAFF_USER">Staf Medis / Nakes</option>
                 <option value="MANAGEMENT">Manajemen</option>
               </select>
@@ -1153,7 +1153,7 @@ export default function SuperadminView({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-                Daftar Ruangan & Bangsal Pelayanan RSBM
+                Daftar Ruangan & Bangsal Pelayanan Rumah Sakit
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Data master lokasi untuk penempatan perangkat dan titik laporan nakes.
@@ -1392,7 +1392,7 @@ export default function SuperadminView({
             <div className="space-y-1">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 text-[11px] font-bold border border-rose-200 dark:border-rose-500/30">
                 <Layers className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                Daftar Tiket Antrean Layanan TI RSBM
+                Daftar Tiket Antrean Layanan TI
               </div>
               <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 Monitoring Aduan Masuk & Belum Selesai
@@ -1675,7 +1675,7 @@ export default function SuperadminView({
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
                   {ticketStatusFilter === "UNRESOLVED" && !ticketSearch && ticketUrgencyFilter === "ALL"
-                    ? "Luar biasa! Seluruh kendala fasilitas TI rumah sakit saat ini telah terselesaikan dengan baik oleh Staf TI RSBM."
+                    ? "Luar biasa! Seluruh kendala fasilitas TI rumah sakit saat ini telah terselesaikan dengan baik oleh Staf TI."
                     : "Coba sesuaikan kata kunci pencarian atau ubah filter status & tingkat urgensi."}
                 </p>
                 {(ticketSearch || ticketUrgencyFilter !== "ALL" || ticketStatusFilter !== "UNRESOLVED") && (
@@ -2099,8 +2099,8 @@ export default function SuperadminView({
                     className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold"
                   >
                     <option value={Role.STAFF_USER}>Staf Medis / Nakes (Pelapor)</option>
-                    <option value={Role.IT_STAFF}>Staf TI RSBM (Helpdesk & Lapangan)</option>
-                    <option value={Role.MANAGEMENT}>Manajemen RS</option>
+                    <option value={Role.IT_STAFF}>Staf TI (Helpdesk & Lapangan)</option>
+                    <option value={Role.MANAGEMENT}>Manajemen</option>
                     <option value={Role.SUPERADMIN}>Super Admin TI</option>
                   </select>
                 </div>

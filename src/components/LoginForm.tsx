@@ -86,9 +86,9 @@ export default function LoginForm() {
           <div className="inline-flex items-center justify-center w-14 h-14 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-2xl mb-3 shadow-inner border border-sky-100 dark:border-sky-500/20">
             <ShieldCheck className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">SIATI RSBM</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">SIATI</h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Sistem Informasi Aduan & Ticketing TI Rumah Sakit Bhayangkara Medan
+            Sistem Informasi Aduan & Ticketing TI Rumah Sakit
           </p>
         </div>
 

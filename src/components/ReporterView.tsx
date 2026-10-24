@@ -135,7 +135,7 @@ export default function ReporterView({ tickets, userName, unitName }: ReporterVi
           <div className="space-y-1">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-xs font-semibold backdrop-blur-sm">
               <ShieldCheck className="w-3.5 h-3.5" />
-              Layanan Siaga TI RSBM 24 Jam
+              Layanan Siaga TI 24 Jam
             </div>
             <h2 className="text-lg xs:text-xl sm:text-2xl font-bold tracking-tight">
               Selamat Bertugas, {userName} 👋

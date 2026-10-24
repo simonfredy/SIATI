@@ -5,9 +5,9 @@
 
 | Metadata Dokumen | Spesifikasi Teknis Produk |
 | :--- | :--- |
-| **Nama Produk** | **SIATI RSBM** (Sistem Informasi Aduan & Ticketing IT) |
-| **Instansi Sasaran** | Rumah Sakit Bhayangkara Medan (RSBM) |
-| **Versi Dokumen** | **1.3.0** *(Updated with Executive Management & Karumkit Portal, SLA Scorecard, SKP Matrix, & Official Report Export)* |
+| **Nama Produk** | **SIATI** (Sistem Informasi Aduan & Ticketing IT) |
+| **Instansi Sasaran** | Rumah Sakit (Pemerintah, Daerah, Swasta) |
+| **Versi Dokumen** | **1.3.0** *(Updated with Executive Management Portal, SLA Scorecard, SKP Matrix, & Official Report Export)* |
 | **Status** | **Approved & Production-Ready** |
 | **Pola Arsitektur** | **Fullstack TypeScript (Next.js 16+ Turbopack App Router + PWA)** |
 | **Database & ORM** | **MariaDB 10.11+ LTS** dengan **Prisma ORM 6.x** |
@@ -50,9 +50,9 @@ flowchart TD
         Login[Login NIP / Password Pegawai] --> JWT[Session Cookie: HttpOnly + Secure]
     end
 
-    JWT -->|Role: STAFF_USER| P1[Nakes / Pegawai RSBM]
-    JWT -->|Role: IT_STAFF| P2[Staf TI RSBM - Helpdesk & Lapangan]
-    JWT -->|Role: MANAGEMENT| P3[Karumkit / Direksi RSBM]
+    JWT -->|Role: STAFF_USER| P1[Nakes / Pegawai Rumah Sakit]
+    JWT -->|Role: IT_STAFF| P2[Staf TI - Helpdesk & Lapangan]
+    JWT -->|Role: MANAGEMENT| P3[Manajemen Rumah Sakit]
     JWT -->|Role: SUPERADMIN| P4[Administrator Sistem & Keamanan]
 
     P1 -->|Fitur| F1[Buat Tiket + Upload Media, Riwayat Tiket Saya, Rating Layanan]
@@ -179,8 +179,8 @@ https://siati.rsud.go.id/teknisi/tiket/TKT-20261023-0012
 
 ---
 
-### 4.4 Modul Portal Eksekutif Direksi & Manajemen RSBM (Executive Governance & SLA Scorecard)
-Sebagai modul kendali bagi pimpinan rumah sakit (**Karumkit, Wakil Kepala Rumah Sakit, Direksi Medis & Penunjang, serta Kepala Bagian Tata Usaha**), antarmuka dengan peran `MANAGEMENT` menyajikan visualisasi data analitik tingkat tinggi, evaluasi kepatuhan SLA, serta audit kinerja staf TI yang dapat dipertanggungjawabkan dalam akreditasi rumah sakit (KARS/STARKES):
+### 4.4 Modul Portal Eksekutif Manajemen (Executive Governance & SLA Scorecard)
+Sebagai modul kendali bagi pimpinan rumah sakit (**Manajemen Rumah Sakit**), antarmuka dengan peran `MANAGEMENT` menyajikan visualisasi data analitik tingkat tinggi, evaluasi kepatuhan SLA, serta audit kinerja staf TI yang dapat dipertanggungjawabkan dalam akreditasi rumah sakit (KARS/STARKES):
 
 #### 1. Executive Scorecard & Filter Rentang Waktu Per Tanggal:
 - **Rentang Waktu Per Tanggal Khusus 6 Kartu KPI**:
@@ -190,10 +190,10 @@ Sebagai modul kendali bagi pimpinan rumah sakit (**Karumkit, Wakil Kepala Rumah 
     1. **Total Aduan Masuk**: Menghitung volume kumulatif aduan dalam rentang tanggal terpilih beserta rincian status (*Selesai*, *Dikerjakan*, *Menunggu Suku Cadang*, *Antrean Baru*).
     2. **Tingkat Kepatuhan SLA (%)**:
        $$\text{Persentase Kepatuhan SLA} = \left(\frac{\text{Jumlah Tiket Selesai Sesuai Target SLA Kategori}}{\text{Total Tiket Diselesaikan}}\right) \times 100\%$$
-       - Standar Mutu Rumah Sakit Bhayangkara Medan: $\ge 90.0\%$ (Lengkap dengan visual progress bar & status kelayakan akreditasi).
+       - Standar Mutu Rumah Sakit: $\ge 90.0\%$ (Lengkap dengan visual progress bar & status kelayakan akreditasi).
     3. **MTTA (Mean Time to Acknowledge / Kecepatan Respon Awal)**:
        $$\text{MTTA} = \frac{\sum (\text{Waktu Tiket Direspons} - \text{Waktu Tiket Dilaporkan})}{\text{Jumlah Tiket Terrespons}}$$
-       - Mengukur kecepatan helpdesk dan teknisi siaga dalam merespons aduan nakes (Target RSBM: $< 15$ menit).
+       - Mengukur kecepatan helpdesk dan teknisi siaga dalam merespons aduan nakes (Target Rumah Sakit: $< 15$ menit).
     4. **MTTR (Mean Time to Repair / Stopwatch Pengerjaan Bersih)**:
        $$\text{MTTR} = \frac{\sum (\text{Waktu Tiket Selesai} - \text{Waktu Mulai Kerja} - \text{Waktu Jeda Suku Cadang})}{\text{Jumlah Tiket Selesai}}$$
        - Mengukur efisiensi teknis penanganan masalah hingga perangkat normal kembali.
@@ -245,12 +245,12 @@ Sebagai modul kendali bagi pimpinan rumah sakit (**Karumkit, Wakil Kepala Rumah 
 #### 6. Wawasan Strategis & Rekomendasi Manajerial Aset TI:
 - Dilengkapi filter rentang tanggal mandiri untuk mengevaluasi rekomendasi peremajaan perangkat keras, penambahan access point jaringan bangsal, pemeliharaan integrasi BPJS V-Claim, dan evaluasi kecukupan shift teknisi pada kurun waktu terkait.
 
-#### 7. Ekspor Data Excel (CSV UTF-8) & Format Cetak Resmi Kop RS Bhayangkara Medan:
+#### 7. Ekspor Data Excel (CSV UTF-8) & Format Cetak Resmi Kop Surat Rumah Sakit:
 - **Export CSV/Excel**: Ekspor seluruh rekaman tiket yang sedang difilter beserta presisi waktu respon dan waktu pengerjaan dalam menit dengan format UTF-8 BOM untuk pengolahan spreadsheet SKP.
 - **Cetak Laporan Eksekutif Resmi**:
   - Menggunakan format kop surat resmi:
-    *Kepolisian Negara Republik Indonesia Daerah Sumatera Utara Bidang Kedokteran dan Kesehatan Rumah Sakit Bhayangkara Tk II Medan*.
-  - Dilengkapi stempel tanggal cetak, identitas pemeriksa, dan kolom tanda tangan pengesahan Kepala Rumah Sakit Bhayangkara Medan.
+    *Instalasi Teknologi Informasi & Fasilitas Medis Rumah Sakit*.
+  - Dilengkapi stempel tanggal cetak, identitas pemeriksa, dan kolom tanda tangan pengesahan Manajemen Rumah Sakit.
   - Otomatis menyembunyikan tombol navigasi saat diprint melalui peramban (`@media print`).
 
 ---

@@ -33,9 +33,9 @@ export default function DashboardNavbar({ user, activeView = "superadmin" }: Nav
       case Role.SUPERADMIN:
         return { label: "Super Admin TI", color: "bg-purple-50 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-400/30" };
       case Role.MANAGEMENT:
-        return { label: "Manajemen RSBM", color: "bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-400/30" };
+        return { label: "Manajemen", color: "bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-400/30" };
       case Role.IT_STAFF:
-        return { label: "Staf TI RSBM", color: "bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-400/30" };
+        return { label: "Staf TI", color: "bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-400/30" };
       default:
         return { label: "Staf Medis / Nakes", color: "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-400/30" };
     }
@@ -54,7 +54,7 @@ export default function DashboardNavbar({ user, activeView = "superadmin" }: Nav
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               <span className="text-slate-900 dark:text-white font-bold text-sm sm:text-base tracking-wide whitespace-nowrap">
-                SIATI RSBM
+                SIATI
               </span>
               <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full border font-semibold whitespace-nowrap ${badge.color}`}>
                 {badge.label}

@@ -1,7 +1,7 @@
 import { Variants, TargetAndTransition } from "motion/react";
 
 /**
- * Variasi Animasi Terpadu SIATI RSBM Berbasis Motion
+ * Variasi Animasi Terpadu SIATI Berbasis Motion
  */
 
 const smoothEase: [number, number, number, number] = [0.16, 1, 0.3, 1];

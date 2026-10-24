@@ -1,5 +1,5 @@
-# 🏥 SIATI RSBM — Sistem Informasi & Aduan Terpadu TI
-### Rumah Sakit Bhayangkara Tingkat II Medan
+# 🏥 SIATI — Sistem Informasi & Aduan Terpadu TI Rumah Sakit
+### Platform Helpdesk & Ticketing Insiden Medis Terpadu
 
 [![Next.js](https://img.shields.io/badge/Next.js-16.4.2-black?style=flat&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.3.0-blue?style=flat&logo=react)](https://react.dev/)
@@ -12,9 +12,9 @@
 
 ---
 
-## 📌 1. Apa Itu SIATI RSBM?
+## 📌 1. Apa Itu SIATI?
 
-**SIATI RSBM** *(Sistem Informasi & Aduan Terpadu TI)* adalah platform helpdesk dan penanganan insiden digital operasional medis yang dikembangkan khusus untuk **Rumah Sakit Bhayangkara Tingkat II Medan**.
+**SIATI** *(Sistem Informasi & Aduan Terpadu TI)* adalah platform helpdesk dan penanganan insiden digital operasional medis yang dirancang secara universal untuk seluruh **Rumah Sakit (RSUD, RSUP, RS Swasta, maupun RS Pemerintah)**.
 
 ### 🎯 Latar Belakang Masalah
 Sebelum adanya SIATI, pelaporan gangguan SIMRS, printer label resep, PC unit poliklinik, dan jaringan internet dilakukan secara sporadis melalui grup WhatsApp atau panggilan telepon. Akibatnya:
@@ -215,14 +215,14 @@ JWT_EXPIRES_IN="1d"
 
 # CAPTCHA Protection
 CAPTCHA_MODE="offline"
-CAPTCHA_SECRET_KEY="kunci_rahasia_hmac_captcha_produksi_rsbm"
+CAPTCHA_SECRET_KEY="kunci_rahasia_hmac_captcha_produksi_rumah_sakit"
 
 # Lokasi Storage Media Terlindung (Nginx X-Accel-Redirect)
 MEDIA_UPLOAD_DIR="/var/siati/media"
 MAX_FILE_SIZE_MB=60
 
 # Domain Resmi Aplikasi
-NEXT_PUBLIC_APP_URL="https://siati.rsbm.co.id"
+NEXT_PUBLIC_APP_URL="https://siati.rumahsakit.co.id"
 NODE_ENV="production"
 ```
 
@@ -270,7 +270,7 @@ Aktifkan konfigurasi Nginx via symlink:
 sudo ln -s /etc/nginx/sites-available/siati.conf /etc/nginx/sites-enabled/
 ```
 
-*Catatan: Pastikan nama domain pada blok `server_name` di `/etc/nginx/sites-available/siati.conf` sesuai dengan domain server rumah sakit (misal: `siati.rsbm.co.id`).*
+*Catatan: Pastikan nama domain pada blok `server_name` di `/etc/nginx/sites-available/siati.conf` sesuai dengan domain server rumah sakit (misal: `siati.rumahsakit.co.id`).*
 
 Uji sintaks Nginx dan muat ulang:
 ```bash
@@ -283,7 +283,7 @@ sudo systemctl reload nginx
 ### Langkah 8: Pasang Sertifikat SSL Gratis (Let's Encrypt HTTPS)
 Amankan sambungan domain dengan sertifikat SSL TLS otomatis:
 ```bash
-sudo certbot --nginx -d siati.rsbm.co.id
+sudo certbot --nginx -d siati.rumahsakit.co.id
 ```
 Pilih opsi **Redirect HTTP to HTTPS (otomatis)**. Certbot akan memperbarui sertifikat secara berkala via cron job.
 
@@ -341,5 +341,5 @@ Tambahkan baris berikut (backup setiap pukul 02:00 dini hari):
 ---
 
 ## 📄 Lisensi
-Hak Cipta © 2026 **Rumah Sakit Bhayangkara Tingkat II Medan (RSBM)**. Dilindungi undang-undang.
+Hak Cipta © 2026 **SIATI - Sistem Informasi Aduan TI Rumah Sakit**. Dilindungi undang-undang.
 Dikembangkan untuk efisiensi mutu pelayanan dan keandalan operasional fasilitas teknologi informasi rumah sakit.

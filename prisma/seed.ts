@@ -19,7 +19,7 @@ async function main() {
     { name: "Rawat Inap Bangsal Melati", buildingZone: "Gedung Rawat Inap Lt. 2", qrIdentifier: "LOC-BANGSAL-MELATI" },
     { name: "Kasir & Pembayaran Pasien", buildingZone: "Gedung Utama Lt. 1", qrIdentifier: "LOC-KASIR-01" },
     { name: "Instalasi SIMRS & TI", buildingZone: "Gedung Manajemen Lt. 3", qrIdentifier: "LOC-IT-SIMRS" },
-    { name: "Manajemen RSBM", buildingZone: "Gedung Manajemen Lt. 3", qrIdentifier: "LOC-MANAJEMEN-01" },
+    { name: "Manajemen Rumah Sakit", buildingZone: "Gedung Manajemen Lt. 3", qrIdentifier: "LOC-MANAJEMEN-01" },
   ];
 
   for (const u of unitsData) {
@@ -78,7 +78,7 @@ async function main() {
     {
       username: "manajemen",
       nip: "197805152003121002",
-      fullName: "Kombes Pol. dr. Martinus Ginting, Sp.P (Manajemen RSBM)",
+      fullName: "dr. Martinus Ginting, Sp.P (Manajemen)",
       phoneNumber: "08116000001",
       telegramChatId: "",
       role: Role.MANAGEMENT,
@@ -88,7 +88,7 @@ async function main() {
     {
       username: "direksi",
       nip: "197805152003121002",
-      fullName: "Kombes Pol. dr. Martinus Ginting, Sp.P (Manajemen RSBM)",
+      fullName: "dr. Martinus Ginting, Sp.P (Manajemen)",
       phoneNumber: "08116000001",
       telegramChatId: "",
       role: Role.MANAGEMENT,
@@ -98,7 +98,7 @@ async function main() {
     {
       username: "operator",
       nip: "199202022021021002",
-      fullName: "Operator Staf TI RSBM",
+      fullName: "Operator Staf TI",
       phoneNumber: "081234567891",
       telegramChatId: "",
       role: Role.IT_STAFF,
@@ -108,7 +108,7 @@ async function main() {
     {
       username: "rian",
       nip: "199503032022031003",
-      fullName: "Rian Staf TI RSBM",
+      fullName: "Rian Staf TI",
       phoneNumber: "081234567892",
       telegramChatId: "",
       role: Role.IT_STAFF,
@@ -228,7 +228,7 @@ async function main() {
         categoryId: catSoftware!.id,
         urgency: "MEDIUM" as const,
         status: "RESOLVED" as const,
-        description: "Viewer DICOM PACS radiologi meminta update sertifikat SSL internal server RSBM.",
+        description: "Viewer DICOM PACS radiologi meminta update sertifikat SSL internal server rumah sakit.",
         assignedTechnicianId: operatorUser!.id,
         responseMinutes: 9,
         repairMinutes: 15,

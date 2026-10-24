@@ -278,7 +278,7 @@ export default function ITStaffUnifiedView({
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 text-[11px] xs:text-xs font-semibold">
             <Zap className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-            Staf TI RSBM — Pusat Kendali & Pengerjaan
+            Staf TI — Pusat Kendali & Pengerjaan
           </div>
           <h2 className="text-base xs:text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
             Pusat Kendali & Workbench: {currentUserName}
@@ -661,7 +661,7 @@ export default function ITStaffUnifiedView({
               <div>
                 <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Total Tiket Masuk</span>
                 <span className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5 block">{totalTickets}</span>
-                <span className="text-[11px] text-slate-400">Semua Unit RSBM</span>
+                <span className="text-[11px] text-slate-400">Semua Unit Rumah Sakit</span>
               </div>
               <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center shrink-0">
                 <LayoutDashboard className="w-5 h-5" />

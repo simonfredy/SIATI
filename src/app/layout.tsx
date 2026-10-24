@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SIATI - Sistem Informasi Aduan & Ticketing TI RSBM",
-  description: "Layanan Pelaporan Aduan dan Ticketing TI Rumah Sakit Bhayangkara Medan",
+  title: "SIATI - Sistem Informasi Aduan & Ticketing TI Rumah Sakit",
+  description: "Layanan Pelaporan Aduan dan Ticketing TI Fasilitas Rumah Sakit Terpadu",
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",

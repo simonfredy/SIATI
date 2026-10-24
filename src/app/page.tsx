@@ -28,7 +28,7 @@ export default async function HomePage() {
             <Activity className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-slate-800 dark:text-white font-bold text-sm tracking-wide">SIATI RSBM</span>
+            <span className="text-slate-800 dark:text-white font-bold text-sm tracking-wide">SIATI</span>
             <span className="text-slate-500 dark:text-slate-400 text-xs block -mt-0.5">Sistem Aduan & Ticketing TI</span>
           </div>
         </div>
@@ -45,7 +45,7 @@ export default async function HomePage() {
           <div className="hidden lg:flex lg:col-span-6 flex-col space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 text-xs font-bold w-fit">
               <ShieldAlert className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-              Sistem Aduan & Ticketing Terpadu TI RSBM
+              Sistem Aduan & Ticketing Terpadu TI Rumah Sakit
             </div>
 
             <div className="space-y-2">
@@ -53,7 +53,7 @@ export default async function HomePage() {
                 Layanan Siaga & Kendali Cepat Teknologi Informasi
               </h1>
               <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                Platform pelaporan kendala digital Rumah Sakit Bhayangkara Medan untuk percepatan pemulihan SIMRS, bridging BPJS, rekam medis elektronik, perangkat keras, dan jaringan medis.
+                Platform pelaporan kendala digital fasilitas rumah sakit untuk percepatan pemulihan SIMRS, bridging BPJS, rekam medis elektronik, perangkat keras, dan jaringan medis.
               </p>
             </div>
 
@@ -76,7 +76,7 @@ export default async function HomePage() {
               <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-white/10 shadow-sm backdrop-blur-sm">
                 <span className="text-xs font-bold text-slate-900 dark:text-white block">⚡ Penentuan Urgensi</span>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 block">
-                  Skala prioritas P1-P4 ditentukan langsung oleh tim TI RSBM.
+                  Skala prioritas P1-P4 ditentukan langsung oleh tim TI.
                 </span>
               </div>
 
@@ -107,7 +107,7 @@ export default async function HomePage() {
             <ShieldAlert className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             Zero-Trust Protected
           </span>
-          <span>© 2026 SIATI RSBM</span>
+          <span>© 2026 SIATI</span>
         </div>
       </footer>
     </div>

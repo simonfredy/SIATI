@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { realtimeEmitter, RealtimeEventPayload } from "@/lib/realtime";
 
 /**
- * Route Handler Server-Sent Events (SSE) untuk Siaran Real-Time SIATI RSBM
+ * Route Handler Server-Sent Events (SSE) untuk Siaran Real-Time SIATI
  * Memungkinkan pembaruan data tiket dan analitik secara instan tanpa reload browser.
  */
 export async function GET(req: NextRequest) {

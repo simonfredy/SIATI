@@ -121,7 +121,7 @@ export default function TicketFormClient({
       const res = await createTicketAction({
         unitId,
         categoryId,
-        urgency: TicketUrgency.MEDIUM, // Tingkat urgensi ditentukan staf TI RSBM
+        urgency: TicketUrgency.MEDIUM, // Tingkat urgensi ditentukan staf TI
         description,
         attachments: attachments.map((att) => ({
           storedFilename: att.storedFilename,
@@ -153,7 +153,7 @@ export default function TicketFormClient({
             Aduan Berhasil Diterbitkan!
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Tiket laporan Anda telah masuk ke sistem antrean TI RSBM.
+            Tiket laporan Anda telah masuk ke sistem antrean layanan TI.
           </p>
         </div>
 

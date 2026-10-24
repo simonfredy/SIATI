@@ -126,7 +126,7 @@ export default function AdminHelpdeskView({
             Pusat Komando Helpdesk SIMRS & TI
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Operator: <strong className="text-slate-800 dark:text-white">{adminName}</strong> • Monitoring Antrean & Tingkat Urgensi Seluruh Ruangan RSBM
+            Operator: <strong className="text-slate-800 dark:text-white">{adminName}</strong> • Monitoring Antrean & Tingkat Urgensi Seluruh Ruangan Rumah Sakit
           </p>
         </div>
 

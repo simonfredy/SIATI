@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { createTicketSchema, updateTicketStatusSchema, rateTicketSchema } from "@/lib/validations";
-import { TicketStatus, TicketUrgency, AttachmentType } from "@prisma/client";
+import { TicketStatus, TicketUrgency, AttachmentType, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { broadcastRealtimeEvent } from "@/lib/realtime";
 
@@ -26,6 +26,7 @@ export interface AttachmentInput {
 
 /**
  * Membuat Tiket Aduan Baru oleh Pegawai/Nakes
+ * Dilengkapi Mekanisme Concurrency-Safe & Auto-Retry Loop untuk Penanganan Submit Bersamaan
  */
 export async function createTicketAction(
   data: {
@@ -58,65 +59,106 @@ export async function createTicketAction(
   }
 
   try {
-    // 2. Generate Nomor Tiket Urut Harian (TKT-YYYYMMDD-XXXX)
+    // 2. Generate Nomor Tiket Urut Harian (TKT-YYYYMMDD-XXXX) dengan Concurrency Safe Loop
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
     const day = String(now.getDate()).padStart(2, "0");
     const datePrefix = `${year}${month}${day}`;
+    const ticketPrefix = `TKT-${datePrefix}-`;
 
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    let ticket = null;
+    let ticketNumber = "";
+    const maxRetries = 5;
 
-    const todayCount = await prisma.ticket.count({
-      where: {
-        submittedAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-      },
-    });
-
-    const sequenceNumber = String(todayCount + 1).padStart(4, "0");
-    const ticketNumber = `TKT-${datePrefix}-${sequenceNumber}`;
-
-    // 3. Simpan Tiket ke Database MariaDB
-    const ticket = await prisma.ticket.create({
-      data: {
-        ticketNumber,
-        reporterId: user.userId,
-        unitId: validation.data.unitId,
-        categoryId: validation.data.categoryId,
-        urgency: validation.data.urgency,
-        description: validation.data.description,
-        status: TicketStatus.SUBMITTED,
-        attachments: {
-          create: (data.attachments || []).map((att) => ({
-            fileType: att.fileType as AttachmentType,
-            originalName: att.originalName,
-            storedFilename: att.storedFilename,
-            filePath: `uploads/${att.storedFilename}`,
-            fileSizeBytes: att.fileSizeBytes,
-            mimeType: att.mimeType,
-            sha256Hash: att.sha256Hash,
-            durationSeconds: att.durationSeconds || null,
-          })),
-        },
-        timelineLogs: {
-          create: {
-            actorUserId: user.userId,
-            actorName: user.fullName,
-            previousStatus: null,
-            newStatus: TicketStatus.SUBMITTED,
-            notes: "Tiket berhasil diterbitkan oleh pelapor.",
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // Cari tiket dengan urutan nomor tertinggi yang terbit pada hari ini
+        const latestTicket = await prisma.ticket.findFirst({
+          where: {
+            ticketNumber: {
+              startsWith: ticketPrefix,
+            },
           },
-        },
-      },
-      include: {
-        unit: true,
-        category: true,
-      },
-    });
+          orderBy: {
+            ticketNumber: "desc",
+          },
+          select: {
+            ticketNumber: true,
+          },
+        });
+
+        let nextSeq = 1;
+        if (latestTicket && latestTicket.ticketNumber) {
+          const parts = latestTicket.ticketNumber.split("-");
+          const lastNum = parseInt(parts[parts.length - 1], 10);
+          if (!isNaN(lastNum)) {
+            nextSeq = lastNum + 1 + attempt;
+          }
+        } else {
+          nextSeq = 1 + attempt;
+        }
+
+        const sequenceNumber = String(nextSeq).padStart(4, "0");
+        ticketNumber = `${ticketPrefix}${sequenceNumber}`;
+
+        // 3. Simpan Tiket ke Database MariaDB
+        ticket = await prisma.ticket.create({
+          data: {
+            ticketNumber,
+            reporterId: user.userId,
+            unitId: validation.data.unitId,
+            categoryId: validation.data.categoryId,
+            urgency: validation.data.urgency,
+            description: validation.data.description,
+            status: TicketStatus.SUBMITTED,
+            attachments: {
+              create: (data.attachments || []).map((att) => ({
+                fileType: att.fileType as AttachmentType,
+                originalName: att.originalName,
+                storedFilename: att.storedFilename,
+                filePath: `uploads/${att.storedFilename}`,
+                fileSizeBytes: att.fileSizeBytes,
+                mimeType: att.mimeType,
+                sha256Hash: att.sha256Hash,
+                durationSeconds: att.durationSeconds || null,
+              })),
+            },
+            timelineLogs: {
+              create: {
+                actorUserId: user.userId,
+                actorName: user.fullName,
+                previousStatus: null,
+                newStatus: TicketStatus.SUBMITTED,
+                notes: "Tiket berhasil diterbitkan oleh pelapor.",
+              },
+            },
+          },
+          include: {
+            unit: true,
+            category: true,
+          },
+        });
+
+        // Sukses dibuat, keluar dari retry loop
+        break;
+      } catch (err) {
+        // Jika ada pengguna lain yang membuat tiket di milidetik yang sama persis (P2002 unique constraint)
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === "P2002" &&
+          attempt < maxRetries - 1
+        ) {
+          console.warn(`[Concurrency] Tabrakan nomor tiket ${ticketNumber} terdeteksi, mencoba ulang (${attempt + 1}/${maxRetries})...`);
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    if (!ticket) {
+      throw new Error("Gagal mengalokasikan nomor tiket urut setelah percobaan maksimal.");
+    }
 
     // 4. Catat Audit Log
     await prisma.systemAuditLog.create({
@@ -200,7 +242,18 @@ export async function updateTicketStatusAction(data: {
 
     // 1. Logika Durasi Respon (TTR): Saat tiket pertama kali di-assign ke teknisi
     if (newStatus === TicketStatus.ASSIGNED) {
-      updateData.firstAssignedAt = now;
+      // Cegah race condition jika dua staf TI mengklik 'Ambil Tiket' secara bersamaan
+      if (
+        ticket.status !== TicketStatus.SUBMITTED &&
+        ticket.assignedTechnicianId &&
+        ticket.assignedTechnicianId !== (assignedTechnicianId || user.userId)
+      ) {
+        return {
+          success: false,
+          message: "Tiket ini baru saja diambil dan sedang ditangani oleh staf TI lain.",
+        };
+      }
+      updateData.firstAssignedAt = ticket.firstAssignedAt || now;
       updateData.assignedTechnicianId = assignedTechnicianId || user.userId;
       const responseMinutes = Math.max(
         1,

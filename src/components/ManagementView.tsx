@@ -786,7 +786,7 @@ export default function ManagementView({
     const timestamp = new Date().toISOString().slice(0, 10);
     link.setAttribute(
       "download",
-      `SIATI_RSBM_Laporan_Eksekutif_${timestamp}.csv`
+      `SIATI_Laporan_Eksekutif_${timestamp}.csv`
     );
     document.body.appendChild(link);
     link.click();
@@ -979,20 +979,13 @@ export default function ManagementView({
       {/* ======================================================== */}
       <div className="hidden print:block print:mb-8 text-black border-b-2 border-black pb-4 text-center">
         <div className="text-xs font-bold tracking-widest uppercase">
-          Kepolisian Negara Republik Indonesia
-        </div>
-        <div className="text-xs font-bold tracking-widest uppercase">
-          Daerah Sumatera Utara
-        </div>
-        <div className="text-xs font-bold tracking-widest uppercase">
-          Bidang Kedokteran dan Kesehatan
+          Pelayanan Kesehatan & Fasilitas Medis
         </div>
         <div className="text-base font-extrabold tracking-wider uppercase mt-1">
-          Rumah Sakit Bhayangkara Tk II Medan
+          Instalasi Teknologi Informasi Rumah Sakit
         </div>
         <div className="text-[11px] font-normal italic mt-0.5">
-          Jl. K.H. Wahid Hasyim No. 1, Medan • Telp: (061) 4535805 • Laporan
-          Eksekutif SIATI RSBM
+          Sistem Informasi Aduan & Ticketing Terpadu TI • Laporan Eksekutif SIATI
         </div>
         <div className="w-full h-0.5 bg-black mt-2"></div>
         <div className="text-sm font-bold uppercase mt-3">
@@ -1344,8 +1337,7 @@ export default function ManagementView({
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
               Monitoring real-time tingkat kepatuhan SLA, stopwatch perbaikan teknisi
-              presisi menit, dan heatmap kendala fasilitas kesehatan di Rumah Sakit
-              Bhayangkara Medan.
+              presisi menit, dan heatmap kendala fasilitas kesehatan di seluruh instalasi dan unit rumah sakit.
             </p>
           </div>
 
@@ -1354,7 +1346,7 @@ export default function ManagementView({
             <button
               onClick={handlePrintReport}
               className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white border border-white/20 text-xs sm:text-sm font-semibold transition-all backdrop-blur-sm shadow-sm"
-              title="Cetak Laporan Resmi Format Surat RSBM"
+              title="Cetak Laporan Resmi Format Surat Rumah Sakit"
             >
               <Printer className="w-4 h-4 text-sky-300" />
               <span>Cetak Laporan</span>
@@ -1500,7 +1492,7 @@ export default function ManagementView({
               <AnimatedCounter value={kpis.slaComplianceRate} decimals={1} suffix="%" />
             </div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-              Target RSBM: <span className="font-semibold">≥ 90.0%</span>
+              Target Standar: <span className="font-semibold">≥ 90.0%</span>
             </div>
             <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mt-2 overflow-hidden">
               <div
@@ -1703,7 +1695,7 @@ export default function ManagementView({
                       Distribusi 5 Pilar Masalah TI
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Proporsi insiden berdasarkan klasifikasi resmi RS Bhayangkara Medan
+                      Proporsi insiden berdasarkan klasifikasi kategori resmi rumah sakit
                     </p>
                   </div>
                   <span className="text-xs px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">
@@ -1938,7 +1930,7 @@ export default function ManagementView({
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <Award className="w-5 h-5 text-amber-500" />
-                  Scorecard Kinerja Staf & Teknisi TI RSBM
+                  Scorecard Kinerja Staf & Teknisi TI
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Rujukan resmi penilaian Sasaran Kinerja Pegawai (SKP) & pembagian
@@ -1946,7 +1938,7 @@ export default function ManagementView({
                 </p>
               </div>
               <div className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/40">
-                Standar Mutu RSBM: Respon &lt; 15 mnt • SLA &gt; 90%
+                Standar Mutu: Respon &lt; 15 mnt • SLA &gt; 90%
               </div>
             </div>
 
