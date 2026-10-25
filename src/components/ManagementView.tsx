@@ -28,6 +28,7 @@ import {
   RotateCcw,
   PanelLeftClose,
   PanelLeftOpen,
+  FileCheck,
 } from "lucide-react";
 import { TicketStatus, TicketUrgency } from "@prisma/client";
 import { motion, AnimatePresence } from "motion/react";
@@ -41,6 +42,8 @@ import {
   interactiveCardHover,
 } from "@/lib/motionVariants";
 import { HospitalProfileItem } from "@/actions/superadmin";
+import TicketRepairReportModal from "@/components/TicketRepairReportModal";
+import { TicketItem } from "./ReporterView";
 
 export interface ManagementTicketItem {
   id: string;
@@ -186,6 +189,7 @@ export default function ManagementView({
   const [activeTab, setActiveTab] = useState<
     "overview" | "technicians" | "tickets" | "recommendations"
   >("overview");
+  const [reportDocTicket, setReportDocTicket] = useState<TicketItem | null>(null);
 
   // Expand-Collapse State untuk Sidebar Tablet & Laptop / PC
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
@@ -3103,10 +3107,25 @@ export default function ManagementView({
             </div>
 
             {/* Modal Footer */}
-            <div className="px-5 py-3 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-800/60 flex justify-end">
+            <div className="px-5 py-3 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-800/60 flex items-center justify-between gap-3">
+              {selectedTicket.rating ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReportDocTicket(selectedTicket as unknown as TicketItem);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <FileCheck className="w-4 h-4" />
+                  <span>Cetak Dokumen Laporan Perbaikan</span>
+                </button>
+              ) : (
+                <div />
+              )}
+
               <button
                 onClick={() => setSelectedTicket(null)}
-                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all"
+                className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer"
               >
                 Tutup
               </button>
@@ -3115,6 +3134,13 @@ export default function ManagementView({
         </motion.div>
       )}
     </AnimatePresence>
+
+    {/* Modal Pratinjau & Cetak Dokumen Berita Acara & Laporan Perbaikan TI */}
+    <TicketRepairReportModal
+      ticket={reportDocTicket}
+      hospitalProfile={hospitalProfile}
+      onClose={() => setReportDocTicket(null)}
+    />
       </div>
     </div>
   );

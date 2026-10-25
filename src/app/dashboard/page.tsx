@@ -135,9 +135,13 @@ export default async function DashboardPage({
       include: {
         unit: true,
         category: true,
-        assignedTechnician: { select: { fullName: true } },
+        assignedTechnician: { select: { id: true, fullName: true, username: true, phoneNumber: true } },
+        reporter: { select: { id: true, fullName: true, username: true, phoneNumber: true } },
         attachments: true,
         rating: true,
+        timelineLogs: {
+          orderBy: { createdAt: "asc" },
+        },
       },
       orderBy: { submittedAt: "desc" },
     });
@@ -149,10 +153,17 @@ export default async function DashboardPage({
       urgency: t.urgency,
       status: t.status,
       submittedAt: t.submittedAt,
+      firstAssignedAt: t.firstAssignedAt,
+      workStartedAt: t.workStartedAt,
+      workResolvedAt: t.workResolvedAt,
+      closedAt: t.closedAt,
       responseMinutes: t.responseMinutes,
       repairMinutes: t.repairMinutes,
+      totalLeadMinutes: t.totalLeadMinutes,
+      totalPendingMinutes: t.totalPendingMinutes,
       unit: { name: t.unit.name, buildingZone: t.unit.buildingZone },
       category: { name: t.category.name, targetSlaMinutes: t.category.targetSlaMinutes },
+      reporter: t.reporter,
       assignedTechnician: t.assignedTechnician,
       attachments: t.attachments.map((a) => ({
         id: a.id,
@@ -160,7 +171,21 @@ export default async function DashboardPage({
         storedFilename: a.storedFilename,
         originalName: a.originalName,
       })),
-      rating: t.rating ? { ratingScore: t.rating.ratingScore, feedback: t.rating.feedback } : null,
+      rating: t.rating
+        ? {
+            ratingScore: t.rating.ratingScore,
+            feedback: t.rating.feedback,
+            createdAt: t.rating.createdAt,
+          }
+        : null,
+      timelineLogs: t.timelineLogs.map((tl) => ({
+        id: tl.id.toString(),
+        actorName: tl.actorName,
+        previousStatus: tl.previousStatus,
+        newStatus: tl.newStatus,
+        notes: tl.notes,
+        createdAt: tl.createdAt,
+      })),
     }));
 
     return (
@@ -177,7 +202,12 @@ export default async function DashboardPage({
           hospitalLogo={hospitalProfile?.logoUrl}
         />
         <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
-          <ReporterView tickets={tickets} userName={user.fullName} unitName={user.departmentUnit?.name || "Unit RS"} />
+          <ReporterView
+            tickets={tickets}
+            userName={user.fullName}
+            unitName={user.departmentUnit?.name || "Unit RS"}
+            hospitalProfile={hospitalProfile}
+          />
         </main>
       </div>
     );
@@ -275,9 +305,13 @@ export default async function DashboardPage({
           include: {
             unit: true,
             category: true,
-            assignedTechnician: { select: { fullName: true } },
+            assignedTechnician: { select: { id: true, fullName: true, username: true, phoneNumber: true } },
+            reporter: { select: { id: true, fullName: true, username: true, phoneNumber: true } },
             attachments: true,
             rating: true,
+            timelineLogs: {
+              orderBy: { createdAt: "asc" },
+            },
           },
           orderBy: { submittedAt: "desc" },
         }),
@@ -327,10 +361,17 @@ export default async function DashboardPage({
       urgency: t.urgency,
       status: t.status,
       submittedAt: t.submittedAt,
+      firstAssignedAt: t.firstAssignedAt,
+      workStartedAt: t.workStartedAt,
+      workResolvedAt: t.workResolvedAt,
+      closedAt: t.closedAt,
       responseMinutes: t.responseMinutes,
       repairMinutes: t.repairMinutes,
+      totalLeadMinutes: t.totalLeadMinutes,
+      totalPendingMinutes: t.totalPendingMinutes,
       unit: { name: t.unit.name, buildingZone: t.unit.buildingZone },
       category: { name: t.category.name, targetSlaMinutes: t.category.targetSlaMinutes },
+      reporter: t.reporter,
       assignedTechnician: t.assignedTechnician,
       attachments: t.attachments.map((a) => ({
         id: a.id,
@@ -338,7 +379,21 @@ export default async function DashboardPage({
         storedFilename: a.storedFilename,
         originalName: a.originalName,
       })),
-      rating: t.rating ? { ratingScore: t.rating.ratingScore, feedback: t.rating.feedback } : null,
+      rating: t.rating
+        ? {
+            ratingScore: t.rating.ratingScore,
+            feedback: t.rating.feedback,
+            createdAt: t.rating.createdAt,
+          }
+        : null,
+      timelineLogs: t.timelineLogs.map((tl) => ({
+        id: tl.id.toString(),
+        actorName: tl.actorName,
+        previousStatus: tl.previousStatus,
+        newStatus: tl.newStatus,
+        notes: tl.notes,
+        createdAt: tl.createdAt,
+      })),
     }));
 
     return (
@@ -412,9 +467,13 @@ export default async function DashboardPage({
       include: {
         unit: true,
         category: true,
-        assignedTechnician: { select: { fullName: true } },
+        assignedTechnician: { select: { id: true, fullName: true, username: true, phoneNumber: true } },
+        reporter: { select: { id: true, fullName: true, username: true, phoneNumber: true } },
         attachments: true,
         rating: true,
+        timelineLogs: {
+          orderBy: { createdAt: "asc" },
+        },
       },
       orderBy: { submittedAt: "desc" },
     }),
@@ -434,10 +493,17 @@ export default async function DashboardPage({
     urgency: t.urgency,
     status: t.status,
     submittedAt: t.submittedAt,
+    firstAssignedAt: t.firstAssignedAt,
+    workStartedAt: t.workStartedAt,
+    workResolvedAt: t.workResolvedAt,
+    closedAt: t.closedAt,
     responseMinutes: t.responseMinutes,
     repairMinutes: t.repairMinutes,
+    totalLeadMinutes: t.totalLeadMinutes,
+    totalPendingMinutes: t.totalPendingMinutes,
     unit: { name: t.unit.name, buildingZone: t.unit.buildingZone },
     category: { name: t.category.name, targetSlaMinutes: t.category.targetSlaMinutes },
+    reporter: t.reporter,
     assignedTechnician: t.assignedTechnician,
     attachments: t.attachments.map((a) => ({
       id: a.id,
@@ -445,7 +511,21 @@ export default async function DashboardPage({
       storedFilename: a.storedFilename,
       originalName: a.originalName,
     })),
-    rating: t.rating ? { ratingScore: t.rating.ratingScore, feedback: t.rating.feedback } : null,
+    rating: t.rating
+      ? {
+          ratingScore: t.rating.ratingScore,
+          feedback: t.rating.feedback,
+          createdAt: t.rating.createdAt,
+        }
+      : null,
+    timelineLogs: t.timelineLogs.map((tl) => ({
+      id: tl.id.toString(),
+      actorName: tl.actorName,
+      previousStatus: tl.previousStatus,
+      newStatus: tl.newStatus,
+      notes: tl.notes,
+      createdAt: tl.createdAt,
+    })),
   }));
 
   return (
@@ -468,6 +548,7 @@ export default async function DashboardPage({
           currentUserId={user.id}
           currentUserName={user.fullName}
           currentUserRole={user.role}
+          hospitalProfile={hospitalProfile}
         />
       </main>
     </div>

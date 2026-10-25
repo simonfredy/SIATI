@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   PlusCircle,
   Clock,
@@ -13,6 +14,8 @@ import {
   MapPin,
   Tag,
   ShieldCheck,
+  FileCheck,
+  Printer,
 } from "lucide-react";
 import { TicketStatus, TicketUrgency } from "@prisma/client";
 import { rateTicketAction } from "@/actions/tickets";
@@ -26,6 +29,8 @@ import {
   interactiveCardHover,
 } from "@/lib/motionVariants";
 import MediaViewerModal, { MediaAttachmentItem } from "@/components/MediaViewerModal";
+import TicketRepairReportModal from "@/components/TicketRepairReportModal";
+import { HospitalProfileItem } from "@/actions/superadmin";
 
 export interface TicketItem {
   id: string;
@@ -34,43 +39,68 @@ export interface TicketItem {
   urgency: TicketUrgency;
   status: TicketStatus;
   submittedAt: Date;
+  firstAssignedAt?: Date | null;
+  workStartedAt?: Date | null;
+  workResolvedAt?: Date | null;
+  closedAt?: Date | null;
   responseMinutes: number | null;
   repairMinutes: number | null;
+  totalLeadMinutes?: number | null;
+  totalPendingMinutes?: number | null;
   unit: { name: string; buildingZone: string };
   category: { name: string; targetSlaMinutes: number };
-  assignedTechnician?: { fullName: string } | null;
+  reporter?: { id?: string; fullName: string; username?: string; phoneNumber?: string | null } | null;
+  assignedTechnician?: { id?: string; fullName: string; username?: string; phoneNumber?: string | null } | null;
   attachments: {
     id: string;
     fileType: string;
     storedFilename: string;
     originalName: string;
   }[];
-  rating?: { ratingScore: number; feedback: string | null } | null;
+  rating?: { ratingScore: number; feedback: string | null; createdAt?: Date | string } | null;
+  timelineLogs?: {
+    id: string;
+    actorName: string;
+    previousStatus?: TicketStatus | null;
+    newStatus: TicketStatus;
+    notes?: string | null;
+    createdAt: Date | string;
+  }[];
 }
 
 interface ReporterViewProps {
   tickets: TicketItem[];
   userName: string;
   unitName: string;
+  hospitalProfile?: HospitalProfileItem | null;
 }
 
-export default function ReporterView({ tickets, userName, unitName }: ReporterViewProps) {
+export default function ReporterView({ tickets, userName, unitName, hospitalProfile }: ReporterViewProps) {
+  const router = useRouter();
+  const [localTickets, setLocalTickets] = useState<TicketItem[]>(tickets);
   const [ratingModalTicket, setRatingModalTicket] = useState<TicketItem | null>(null);
+  const [reportDocTicket, setReportDocTicket] = useState<TicketItem | null>(null);
+  const [ratedSuccessTicket, setRatedSuccessTicket] = useState<TicketItem | null>(null);
   const [selectedStars, setSelectedStars] = useState(5);
   const [ratingFeedback, setRatingFeedback] = useState("");
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const [ratingSuccessMsg, setRatingSuccessMsg] = useState<string | null>(null);
   const [activeMedia, setActiveMedia] = useState<MediaAttachmentItem | null>(null);
 
+  // Sinkronisasi data saat props tiket dari server diperbarui
+  useEffect(() => {
+    setLocalTickets(tickets);
+  }, [tickets]);
+
   // Filter statistik cepat
-  const activeCount = tickets.filter(
+  const activeCount = localTickets.filter(
     (t) =>
       t.status === TicketStatus.SUBMITTED ||
       t.status === TicketStatus.ASSIGNED ||
       t.status === TicketStatus.IN_PROGRESS ||
       t.status === TicketStatus.PENDING_PARTS
   ).length;
-  const resolvedCount = tickets.filter(
+  const resolvedCount = localTickets.filter(
     (t) => t.status === TicketStatus.RESOLVED || t.status === TicketStatus.CLOSED
   ).length;
 
@@ -119,11 +149,22 @@ export default function ReporterView({ tickets, userName, unitName }: ReporterVi
 
     setIsSubmittingRating(false);
     if (res.success) {
-      setRatingSuccessMsg(res.message || "Ulasan tersimpan!");
-      setTimeout(() => {
-        setRatingModalTicket(null);
-        window.location.reload();
-      }, 1000);
+      const updatedTicket: TicketItem = {
+        ...ratingModalTicket,
+        rating: {
+          ratingScore: selectedStars,
+          feedback: ratingFeedback || null,
+          createdAt: new Date(),
+        },
+      };
+
+      setLocalTickets((prev) =>
+        prev.map((t) => (t.id === ratingModalTicket.id ? updatedTicket : t))
+      );
+      setRatedSuccessTicket(updatedTicket);
+      setRatingSuccessMsg(
+        res.message || "Penilaian & ulasan berhasil disimpan! Dokumen Berita Acara & Laporan Perbaikan telah diterbitkan."
+      );
     }
   };
 
@@ -218,11 +259,11 @@ export default function ReporterView({ tickets, userName, unitName }: ReporterVi
             Riwayat Tiket Aduan Unit Anda
           </h3>
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
-            {tickets.length} Tiket
+            {localTickets.length} Tiket
           </span>
         </div>
 
-        {tickets.length === 0 ? (
+        {localTickets.length === 0 ? (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-8 sm:p-12 text-center shadow-sm">
             <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
             <h4 className="text-base font-bold text-slate-900 dark:text-white">Tidak Ada Kendala IT yang Aktif</h4>
@@ -238,7 +279,7 @@ export default function ReporterView({ tickets, userName, unitName }: ReporterVi
           </div>
         ) : (
           <div className="space-y-4">
-            {tickets.map((ticket) => {
+            {localTickets.map((ticket) => {
               const urgencyBadge = getUrgencyBadge(ticket.urgency);
               const statusBadge = getStatusBadge(ticket.status);
 
@@ -343,22 +384,40 @@ export default function ReporterView({ tickets, userName, unitName }: ReporterVi
                         {new Date(ticket.submittedAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} WIB
                       </span>
 
-                      {/* Tombol Beri Rating Bintang Jika Tiket Selesai */}
-                      {ticket.status === TicketStatus.RESOLVED && !ticket.rating && (
+                      {/* Tombol Beri Rating Bintang Jika Tiket Selesai & Belum Dinilai */}
+                      {(ticket.status === TicketStatus.RESOLVED || ticket.status === TicketStatus.CLOSED) && !ticket.rating && (
                         <button
-                          onClick={() => setRatingModalTicket(ticket)}
-                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                          onClick={() => {
+                            setRatingModalTicket(ticket);
+                            setSelectedStars(5);
+                            setRatingFeedback("");
+                            setRatingSuccessMsg(null);
+                          }}
+                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
                         >
                           <Star className="w-3.5 h-3.5 fill-current" />
                           Beri Ulasan Layanan
                         </button>
                       )}
 
+                      {/* Tampilan Rating Bintang & Tombol Dokumen Laporan Hasil Perbaikan */}
                       {ticket.rating && (
-                        <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-bold text-xs bg-amber-50 dark:bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-200 dark:border-amber-500/20">
-                          <Star className="w-3.5 h-3.5 fill-current" />
-                          {ticket.rating.ratingScore}/5 Bintang
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-bold text-xs bg-amber-50 dark:bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-200 dark:border-amber-500/20">
+                            <Star className="w-3.5 h-3.5 fill-current" />
+                            {ticket.rating.ratingScore}/5 Bintang
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => setReportDocTicket(ticket)}
+                            className="px-2.5 py-1 bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/15 dark:hover:bg-sky-500/25 text-sky-700 dark:text-sky-300 font-bold rounded-lg text-xs flex items-center gap-1.5 border border-sky-200 dark:border-sky-500/30 shadow-sm active:scale-95 transition-all cursor-pointer"
+                            title="Buka & Cetak Dokumen Berita Acara & Laporan Hasil Perbaikan Layanan TI"
+                          >
+                            <FileCheck className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                            <span>Dokumen Laporan</span>
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -397,8 +456,47 @@ export default function ReporterView({ tickets, userName, unitName }: ReporterVi
               </div>
 
               {ratingSuccessMsg ? (
-                <div className="p-3.5 bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/40 text-emerald-800 dark:text-emerald-300 rounded-xl text-center text-xs font-semibold">
-                  {ratingSuccessMsg}
+                <div className="space-y-4">
+                  <div className="p-4 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 rounded-2xl text-center space-y-2">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+                      <CheckCircle2 className="w-6 h-6" />
+                    </div>
+                    <h5 className="text-sm font-bold text-emerald-900 dark:text-emerald-200">
+                      Penilaian Berhasil Disimpan!
+                    </h5>
+                    <p className="text-xs text-emerald-700 dark:text-emerald-300">
+                      {ratingSuccessMsg}
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-emerald-200 dark:border-emerald-500/20">
+                      Dokumen Berita Acara & Laporan Hasil Perbaikan Layanan TI kini telah siap dicetak dan diarsipkan.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = ratedSuccessTicket || ratingModalTicket;
+                        setRatingModalTicket(null);
+                        setReportDocTicket(target);
+                      }}
+                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-sky-600/25 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <FileCheck className="w-4 h-4" />
+                      <span>Buka & Cetak Dokumen Laporan</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRatingModalTicket(null);
+                        router.refresh();
+                      }}
+                      className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors cursor-pointer"
+                    >
+                      Selesai & Tutup
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -409,7 +507,7 @@ export default function ReporterView({ tickets, userName, unitName }: ReporterVi
                         key={star}
                         type="button"
                         onClick={() => setSelectedStars(star)}
-                        className={`p-2 rounded-lg transition-transform hover:scale-110 ${
+                        className={`p-2 rounded-lg transition-transform hover:scale-110 cursor-pointer ${
                           selectedStars >= star ? "text-amber-500 dark:text-amber-400" : "text-slate-300 dark:text-slate-600"
                         }`}
                       >
@@ -437,7 +535,7 @@ export default function ReporterView({ tickets, userName, unitName }: ReporterVi
                     <button
                       type="button"
                       onClick={() => setRatingModalTicket(null)}
-                      className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors"
+                      className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-colors cursor-pointer"
                     >
                       Batal
                     </button>
@@ -445,7 +543,7 @@ export default function ReporterView({ tickets, userName, unitName }: ReporterVi
                       type="button"
                       disabled={isSubmittingRating}
                       onClick={handleSendRating}
-                      className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs disabled:opacity-60 transition-colors shadow-sm"
+                      className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs disabled:opacity-60 transition-colors shadow-sm cursor-pointer"
                     >
                       {isSubmittingRating ? "Menyimpan..." : "Kirim Penilaian"}
                     </button>
@@ -459,6 +557,13 @@ export default function ReporterView({ tickets, userName, unitName }: ReporterVi
 
       {/* Modal Penampil Foto & Video Responsif (Mobile / Tablet / PC) */}
       <MediaViewerModal media={activeMedia} onClose={() => setActiveMedia(null)} />
+
+      {/* Modal Pratinjau & Cetak Dokumen Berita Acara & Laporan Perbaikan Layanan TI */}
+      <TicketRepairReportModal
+        ticket={reportDocTicket}
+        hospitalProfile={hospitalProfile}
+        onClose={() => setReportDocTicket(null)}
+      />
     </div>
   );
 }

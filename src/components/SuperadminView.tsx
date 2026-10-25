@@ -57,6 +57,7 @@ import {
 } from "@/actions/superadmin";
 import { updateTicketStatusAction } from "@/actions/tickets";
 import MediaViewerModal, { MediaAttachmentItem } from "@/components/MediaViewerModal";
+import TicketRepairReportModal from "@/components/TicketRepairReportModal";
 import { TicketItem } from "./ReporterView";
 import { motion, AnimatePresence } from "motion/react";
 import AnimatedCounter from "@/components/AnimatedCounter";
@@ -173,6 +174,7 @@ export default function SuperadminView({
   // State lokal pengguna untuk pembaruan instan (optimistic UI) tanpa reload halaman
   const [localUsers, setLocalUsers] = useState<SuperadminUserItem[]>(users);
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
+  const [reportDocTicket, setReportDocTicket] = useState<TicketItem | null>(null);
 
   useEffect(() => {
     setLocalUsers(users);
@@ -392,6 +394,15 @@ export default function SuperadminView({
   });
 
   const handleAdminUpdateUrgency = async (ticketId: string, newUrgency: TicketUrgency) => {
+    const targetTicket = localTickets.find((t) => t.id === ticketId);
+    if (
+      targetTicket &&
+      (targetTicket.status === TicketStatus.RESOLVED || targetTicket.status === TicketStatus.CLOSED)
+    ) {
+      alert("Tingkat urgensi tidak dapat diedit karena tiket sudah selesai.");
+      return;
+    }
+
     // Optimistic update lokal langsung tanpa notifikasi berlebihan
     setLocalTickets((prev) =>
       prev.map((t) => (t.id === ticketId ? { ...t, urgency: newUrgency } : t))
@@ -2050,19 +2061,29 @@ export default function SuperadminView({
                             </span>
                           </td>
 
-                          {/* 4. Tingkat Urgensi (Bisa diedit oleh Superadmin) */}
+                          {/* 4. Tingkat Urgensi (Terkunci jika tiket sudah selesai) */}
                           <td className="py-3.5 px-4 align-top whitespace-nowrap">
-                            <select
-                              value={ticket.urgency}
-                              onChange={(e) => handleAdminUpdateUrgency(ticket.id, e.target.value as TicketUrgency)}
-                              className={`text-[11px] font-bold py-1 px-2 rounded-lg border focus:outline-none transition-colors cursor-pointer ${urgencyBadge.color}`}
-                              title="Ubah Tingkat Urgensi Tiket Ini"
-                            >
-                              <option value={TicketUrgency.EMERGENCY}>P1 - DARURAT</option>
-                              <option value={TicketUrgency.HIGH}>P2 - TINGGI</option>
-                              <option value={TicketUrgency.MEDIUM}>P3 - SEDANG</option>
-                              <option value={TicketUrgency.LOW}>P4 - RENDAH</option>
-                            </select>
+                            {ticket.status === TicketStatus.RESOLVED || ticket.status === TicketStatus.CLOSED ? (
+                              <div
+                                className={`inline-flex items-center gap-1.5 text-[11px] font-bold py-1 px-2.5 rounded-lg border opacity-80 cursor-not-allowed ${urgencyBadge.color}`}
+                                title="Tingkat urgensi tidak dapat diedit karena tiket sudah selesai"
+                              >
+                                <Lock className="w-3 h-3 text-slate-500 shrink-0" />
+                                <span>{urgencyBadge.label}</span>
+                              </div>
+                            ) : (
+                              <select
+                                value={ticket.urgency}
+                                onChange={(e) => handleAdminUpdateUrgency(ticket.id, e.target.value as TicketUrgency)}
+                                className={`text-[11px] font-bold py-1 px-2 rounded-lg border focus:outline-none transition-colors cursor-pointer ${urgencyBadge.color}`}
+                                title="Ubah Tingkat Urgensi Tiket Ini"
+                              >
+                                <option value={TicketUrgency.EMERGENCY}>P1 - DARURAT</option>
+                                <option value={TicketUrgency.HIGH}>P2 - TINGGI</option>
+                                <option value={TicketUrgency.MEDIUM}>P3 - SEDANG</option>
+                                <option value={TicketUrgency.LOW}>P4 - RENDAH</option>
+                              </select>
+                            )}
                           </td>
 
                           {/* 5. Uraian Masalah & Lampiran */}
@@ -2124,6 +2145,18 @@ export default function SuperadminView({
                                 <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                                 <span>Belum Ada Teknisi</span>
                               </div>
+                            )}
+
+                            {ticket.rating && (
+                              <button
+                                type="button"
+                                onClick={() => setReportDocTicket(ticket)}
+                                className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/15 dark:hover:bg-sky-500/25 text-sky-700 dark:text-sky-300 font-bold text-[10.5px] border border-sky-200 dark:border-sky-500/30 cursor-pointer shadow-2xs transition-all"
+                                title="Buka Berita Acara & Dokumen Laporan Hasil Perbaikan"
+                              >
+                                <FileCheck className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                                <span>Dokumen Laporan ({ticket.rating.ratingScore}★)</span>
+                              </button>
                             )}
                           </td>
 
@@ -2227,16 +2260,26 @@ export default function SuperadminView({
                       <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
                         Tingkat Urgensi:
                       </span>
-                      <select
-                        value={ticket.urgency}
-                        onChange={(e) => handleAdminUpdateUrgency(ticket.id, e.target.value as TicketUrgency)}
-                        className={`text-[11px] font-bold py-1 px-2 rounded-lg border focus:outline-none ${urgencyBadge.color}`}
-                      >
-                        <option value={TicketUrgency.EMERGENCY}>P1 - DARURAT</option>
-                        <option value={TicketUrgency.HIGH}>P2 - TINGGI</option>
-                        <option value={TicketUrgency.MEDIUM}>P3 - SEDANG</option>
-                        <option value={TicketUrgency.LOW}>P4 - RENDAH</option>
-                      </select>
+                      {ticket.status === TicketStatus.RESOLVED || ticket.status === TicketStatus.CLOSED ? (
+                        <div
+                          className={`inline-flex items-center gap-1.5 text-[11px] font-bold py-1 px-2.5 rounded-lg border opacity-80 cursor-not-allowed ${urgencyBadge.color}`}
+                          title="Tingkat urgensi tidak dapat diedit karena tiket sudah selesai"
+                        >
+                          <Lock className="w-3 h-3 text-slate-500 shrink-0" />
+                          <span>{urgencyBadge.label}</span>
+                        </div>
+                      ) : (
+                        <select
+                          value={ticket.urgency}
+                          onChange={(e) => handleAdminUpdateUrgency(ticket.id, e.target.value as TicketUrgency)}
+                          className={`text-[11px] font-bold py-1 px-2 rounded-lg border focus:outline-none ${urgencyBadge.color}`}
+                        >
+                          <option value={TicketUrgency.EMERGENCY}>P1 - DARURAT</option>
+                          <option value={TicketUrgency.HIGH}>P2 - TINGGI</option>
+                          <option value={TicketUrgency.MEDIUM}>P3 - SEDANG</option>
+                          <option value={TicketUrgency.LOW}>P4 - RENDAH</option>
+                        </select>
+                      )}
                     </div>
 
                     {/* Deskripsi Masalah */}
@@ -2291,6 +2334,20 @@ export default function SuperadminView({
                         </span>
                       )}
                     </div>
+
+                    {/* Tombol Dokumen Laporan Perbaikan jika tiket sudah dinilai */}
+                    {ticket.rating && (
+                      <div className="pt-2 border-t border-slate-100 dark:border-white/5">
+                        <button
+                          type="button"
+                          onClick={() => setReportDocTicket(ticket)}
+                          className="w-full py-2 px-3 rounded-xl bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/15 dark:hover:bg-sky-500/25 text-sky-700 dark:text-sky-300 font-bold text-xs flex items-center justify-center gap-1.5 border border-sky-200 dark:border-sky-500/30 shadow-xs cursor-pointer"
+                        >
+                          <FileCheck className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                          <span>Lihat Dokumen Laporan ({ticket.rating.ratingScore}★)</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -3281,6 +3338,13 @@ export default function SuperadminView({
 
       {/* Modal Penampil Foto & Video Lampiran (Responsif Mobile / Tablet / PC) */}
       <MediaViewerModal media={activeMedia} onClose={() => setActiveMedia(null)} />
+
+      {/* Modal Pratinjau & Cetak Dokumen Berita Acara & Laporan Perbaikan Layanan TI */}
+      <TicketRepairReportModal
+        ticket={reportDocTicket}
+        hospitalProfile={hospitalProfile}
+        onClose={() => setReportDocTicket(null)}
+      />
     </div>
   );
 }

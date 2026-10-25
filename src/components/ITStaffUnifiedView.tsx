@@ -23,6 +23,9 @@ import {
   Zap,
   LayoutDashboard,
   Hammer,
+  FileCheck,
+  Star,
+  Lock,
 } from "lucide-react";
 import { TicketItem } from "./ReporterView";
 import { motion, AnimatePresence } from "motion/react";
@@ -34,6 +37,8 @@ import {
   interactiveCardHover,
 } from "@/lib/motionVariants";
 import MediaViewerModal, { MediaAttachmentItem } from "@/components/MediaViewerModal";
+import TicketRepairReportModal from "@/components/TicketRepairReportModal";
+import { HospitalProfileItem } from "@/actions/superadmin";
 
 interface ITStaffUnifiedViewProps {
   tickets: TicketItem[];
@@ -41,6 +46,7 @@ interface ITStaffUnifiedViewProps {
   currentUserId: string;
   currentUserName: string;
   currentUserRole: Role;
+  hospitalProfile?: HospitalProfileItem | null;
 }
 
 export default function ITStaffUnifiedView({
@@ -49,9 +55,11 @@ export default function ITStaffUnifiedView({
   currentUserId,
   currentUserName,
   currentUserRole,
+  hospitalProfile,
 }: ITStaffUnifiedViewProps) {
   const router = useRouter();
   const [localTickets, setLocalTickets] = useState<TicketItem[]>(tickets);
+  const [reportDocTicket, setReportDocTicket] = useState<TicketItem | null>(null);
 
   // Sinkronisasi data saat props tiket dari server berubah
   useEffect(() => {
@@ -230,6 +238,15 @@ export default function ITStaffUnifiedView({
   // Action: Ubah Urgensi (Tetap di Tab Antrean tanpa Terpental atau Reload Halaman!)
   const handleUpdateUrgency = (ticketId: string, newUrgency: TicketUrgency) => {
     setActionError(null);
+    const targetTicket = localTickets.find((t) => t.id === ticketId);
+    if (
+      targetTicket &&
+      (targetTicket.status === TicketStatus.RESOLVED || targetTicket.status === TicketStatus.CLOSED)
+    ) {
+      setActionError("Tingkat urgensi tidak dapat diedit karena tiket sudah selesai.");
+      return;
+    }
+
     // 1. Optimistic update langsung di state lokal antrean
     setLocalTickets((prev) =>
       prev.map((t) => (t.id === ticketId ? { ...t, urgency: newUrgency } : t))
@@ -543,18 +560,36 @@ export default function ITStaffUnifiedView({
                             <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                               Tingkat Urgensi:
                             </label>
-                            <select
-                              disabled={isPending}
-                              value={ticket.urgency}
-                              onChange={(e) => handleUpdateUrgency(ticket.id, e.target.value as TicketUrgency)}
-                              className={`w-full text-xs font-bold px-3 py-2 rounded-xl border focus:ring-2 focus:ring-sky-500 ${urgencyColor}`}
-                              title="Tentukan / Ubah Urgensi"
-                            >
-                              <option value="EMERGENCY">🔴 P1 - Darurat</option>
-                              <option value="HIGH">🟠 P2 - Tinggi</option>
-                              <option value="MEDIUM">🟡 P3 - Sedang</option>
-                              <option value="LOW">🟢 P4 - Rendah</option>
-                            </select>
+                            {ticket.status === TicketStatus.RESOLVED || ticket.status === TicketStatus.CLOSED ? (
+                              <div
+                                className={`w-full text-xs font-bold px-3 py-2 rounded-xl border flex items-center justify-between opacity-80 cursor-not-allowed ${urgencyColor}`}
+                                title="Tingkat urgensi tidak dapat diedit karena tiket sudah selesai"
+                              >
+                                <span>
+                                  {ticket.urgency === "EMERGENCY" && "🔴 P1 - Darurat"}
+                                  {ticket.urgency === "HIGH" && "🟠 P2 - Tinggi"}
+                                  {ticket.urgency === "MEDIUM" && "🟡 P3 - Sedang"}
+                                  {ticket.urgency === "LOW" && "🟢 P4 - Rendah"}
+                                </span>
+                                <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                                  <Lock className="w-3 h-3" />
+                                  Terkunci
+                                </span>
+                              </div>
+                            ) : (
+                              <select
+                                disabled={isPending}
+                                value={ticket.urgency}
+                                onChange={(e) => handleUpdateUrgency(ticket.id, e.target.value as TicketUrgency)}
+                                className={`w-full text-xs font-bold px-3 py-2 rounded-xl border focus:ring-2 focus:ring-sky-500 ${urgencyColor}`}
+                                title="Tentukan / Ubah Urgensi"
+                              >
+                                <option value="EMERGENCY">🔴 P1 - Darurat</option>
+                                <option value="HIGH">🟠 P2 - Tinggi</option>
+                                <option value="MEDIUM">🟡 P3 - Sedang</option>
+                                <option value="LOW">🟢 P4 - Rendah</option>
+                              </select>
+                            )}
                           </div>
 
                           {/* Status & Kontrol Lapangan */}
@@ -638,10 +673,29 @@ export default function ITStaffUnifiedView({
                     <p className="text-slate-500 dark:text-slate-400 line-clamp-1">{ticket.description}</p>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-500/30">
                       Selesai dalam {ticket.repairMinutes || 0} Menit
                     </span>
+
+                    {ticket.rating && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-bold text-xs bg-amber-50 dark:bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-200 dark:border-amber-500/20">
+                          <Star className="w-3.5 h-3.5 fill-current" />
+                          {ticket.rating.ratingScore}/5
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => setReportDocTicket(ticket)}
+                          className="px-2.5 py-1 bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/15 dark:hover:bg-sky-500/25 text-sky-700 dark:text-sky-300 font-bold rounded-lg text-xs flex items-center gap-1.5 border border-sky-200 dark:border-sky-500/30 shadow-xs active:scale-95 transition-all cursor-pointer"
+                          title="Buka Dokumen Berita Acara & Laporan Hasil Perbaikan Layanan TI"
+                        >
+                          <FileCheck className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                          <span>Dokumen Laporan</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -908,18 +962,36 @@ export default function ITStaffUnifiedView({
                         <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
                           Tingkat Urgensi:
                         </label>
-                        <select
-                          disabled={isPending}
-                          value={ticket.urgency}
-                          onChange={(e) => handleUpdateUrgency(ticket.id, e.target.value as TicketUrgency)}
-                          className={`w-full text-xs font-bold px-3 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-sky-500 ${urgencyColor}`}
-                          title="Tentukan / Ubah Urgensi"
-                        >
-                          <option value="EMERGENCY">🔴 P1 - Darurat</option>
-                          <option value="HIGH">🟠 P2 - Tinggi</option>
-                          <option value="MEDIUM">🟡 P3 - Sedang</option>
-                          <option value="LOW">🟢 P4 - Rendah</option>
-                        </select>
+                        {ticket.status === TicketStatus.RESOLVED || ticket.status === TicketStatus.CLOSED ? (
+                          <div
+                            className={`w-full text-xs font-bold px-3 py-2 rounded-xl border flex items-center justify-between opacity-80 cursor-not-allowed ${urgencyColor}`}
+                            title="Tingkat urgensi tidak dapat diedit karena tiket sudah selesai"
+                          >
+                            <span>
+                              {ticket.urgency === "EMERGENCY" && "🔴 P1 - Darurat"}
+                              {ticket.urgency === "HIGH" && "🟠 P2 - Tinggi"}
+                              {ticket.urgency === "MEDIUM" && "🟡 P3 - Sedang"}
+                              {ticket.urgency === "LOW" && "🟢 P4 - Rendah"}
+                            </span>
+                            <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                              <Lock className="w-3 h-3" />
+                              Terkunci
+                            </span>
+                          </div>
+                        ) : (
+                          <select
+                            disabled={isPending}
+                            value={ticket.urgency}
+                            onChange={(e) => handleUpdateUrgency(ticket.id, e.target.value as TicketUrgency)}
+                            className={`w-full text-xs font-bold px-3 py-2 rounded-xl border focus:outline-none focus:ring-2 focus:ring-sky-500 ${urgencyColor}`}
+                            title="Tentukan / Ubah Urgensi"
+                          >
+                            <option value="EMERGENCY">🔴 P1 - Darurat</option>
+                            <option value="HIGH">🟠 P2 - Tinggi</option>
+                            <option value="MEDIUM">🟡 P3 - Sedang</option>
+                            <option value="LOW">🟢 P4 - Rendah</option>
+                          </select>
+                        )}
                       </div>
 
                       {/* Aksi Penanganan Tiket (Mandiri / Status Penangan) */}
@@ -953,14 +1025,28 @@ export default function ITStaffUnifiedView({
                           </button>
                         </div>
                       ) : (
-                        <div className="pt-1 p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 text-xs flex items-center gap-2.5">
-                          <UserCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-                          <div className="min-w-0">
-                            <span className="text-[10px] text-slate-400 block font-medium">Sedang Ditangani Oleh:</span>
-                            <span className="font-bold text-slate-900 dark:text-white truncate block">
-                              {ticket.assignedTechnician?.fullName || "Teknisi Lain"}
-                            </span>
+                        <div className="space-y-2">
+                          <div className="pt-1 p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 text-xs flex items-center gap-2.5">
+                            <UserCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <div className="min-w-0">
+                              <span className="text-[10px] text-slate-400 block font-medium">Sedang Ditangani Oleh:</span>
+                              <span className="font-bold text-slate-900 dark:text-white truncate block">
+                                {ticket.assignedTechnician?.fullName || "Teknisi Lain"}
+                              </span>
+                            </div>
                           </div>
+
+                          {/* Tombol Dokumen Laporan jika tiket telah selesai & ada rating */}
+                          {ticket.rating && (
+                            <button
+                              type="button"
+                              onClick={() => setReportDocTicket(ticket)}
+                              className="w-full py-2 px-3 rounded-xl bg-sky-50 hover:bg-sky-100 dark:bg-sky-500/15 dark:hover:bg-sky-500/25 text-sky-700 dark:text-sky-300 font-bold text-xs flex items-center justify-center gap-1.5 border border-sky-200 dark:border-sky-500/30 shadow-xs transition-all cursor-pointer"
+                            >
+                              <FileCheck className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                              <span>Lihat Dokumen Laporan Perbaikan</span>
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1037,6 +1123,13 @@ export default function ITStaffUnifiedView({
 
       {/* Modal Penampil Foto & Video Responsif (Mobile / Tablet / PC) */}
       <MediaViewerModal media={activeMedia} onClose={() => setActiveMedia(null)} />
+
+      {/* Modal Pratinjau & Cetak Dokumen Berita Acara & Laporan Perbaikan TI */}
+      <TicketRepairReportModal
+        ticket={reportDocTicket}
+        hospitalProfile={hospitalProfile}
+        onClose={() => setReportDocTicket(null)}
+      />
     </div>
   );
 }

@@ -234,6 +234,15 @@ export async function updateTicketStatusAction(data: {
     const updateData: Record<string, unknown> = {};
 
     if (urgency) {
+      if (
+        (ticket.status === TicketStatus.RESOLVED || ticket.status === TicketStatus.CLOSED) &&
+        urgency !== ticket.urgency
+      ) {
+        return {
+          success: false,
+          message: "Tingkat urgensi tidak dapat diedit karena tiket sudah selesai.",
+        };
+      }
       updateData.urgency = urgency;
     }
 
@@ -424,17 +433,58 @@ export async function rateTicketAction(data: {
       },
     });
 
+    // Rekam Catatan di Timeline Tiket bahwa Pelapor telah memberi ulasan & Dokumen Laporan Terbit
+    await prisma.ticketTimelineLog.create({
+      data: {
+        ticketId: validation.data.ticketId,
+        actorUserId: user.userId,
+        actorName: user.fullName,
+        newStatus: TicketStatus.RESOLVED,
+        notes: `Pelapor memberikan ulasan: ${validation.data.ratingScore}/5 Bintang - "${validation.data.feedback || "Layanan selesai dengan baik"}" (Dokumen Berita Acara & Laporan Hasil Perbaikan Diterbitkan)`,
+      },
+    });
+
+    // Tandai closedAt saat pelapor telah memvalidasi hasil perbaikan
+    await prisma.ticket.update({
+      where: { id: validation.data.ticketId },
+      data: {
+        closedAt: new Date(),
+      },
+    });
+
+    // Catat ke Audit Log Sistem
+    await prisma.systemAuditLog.create({
+      data: {
+        userId: user.userId,
+        action: "TICKET_RATED_AND_REPORT_GENERATED",
+        ipAddress: "127.0.0.1",
+        userAgent: "Browser",
+        payload: {
+          ticketId: validation.data.ticketId,
+          ratingScore: validation.data.ratingScore,
+          feedback: validation.data.feedback,
+        },
+      },
+    });
+
     // Siarkan Event Penilaian Tiket (SSE)
     broadcastRealtimeEvent({
       type: "TICKET_RATED",
       ticketId: validation.data.ticketId,
       title: "Penilaian Layanan TI Masuk",
-      message: `Pelapor memberikan skor bintang ${validation.data.ratingScore} / 5.`,
+      message: `Pelapor memberikan skor bintang ${validation.data.ratingScore} / 5. Dokumen laporan perbaikan siap diunduh.`,
       timestamp: Date.now(),
     });
 
     revalidatePath("/dashboard");
-    return { success: true, message: "Terima kasih atas penilaian Anda terhadap layanan IT RS!" };
+    return {
+      success: true,
+      message: "Terima kasih atas penilaian Anda! Dokumen Berita Acara & Laporan Hasil Perbaikan TI telah berhasil diterbitkan.",
+      data: {
+        ratingScore: validation.data.ratingScore,
+        feedback: validation.data.feedback,
+      },
+    };
   } catch (error) {
     console.error("Gagal menyimpan ulasan tiket:", error);
     return { success: false, message: "Gagal menyimpan ulasan." };

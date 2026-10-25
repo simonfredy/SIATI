@@ -14,6 +14,7 @@ import {
   Tag,
   RefreshCw,
   AlertCircle,
+  Lock,
 } from "lucide-react";
 import { TicketItem } from "./ReporterView";
 
@@ -278,18 +279,33 @@ export default function AdminHelpdeskView({
                     {/* Urgensi Selector */}
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Tingkat Urgensi:</span>
-                      <select
-                        disabled={isPending}
-                        value={ticket.urgency}
-                        onChange={(e) => handleUpdateUrgency(ticket.id, e.target.value as TicketUrgency)}
-                        className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all ${urgencyColor}`}
-                        title="Tentukan / Ubah Urgensi Tiket"
-                      >
-                        <option value="EMERGENCY">🔴 P1 - Darurat</option>
-                        <option value="HIGH">🟠 P2 - Tinggi</option>
-                        <option value="MEDIUM">🟡 P3 - Sedang</option>
-                        <option value="LOW">🟢 P4 - Rendah</option>
-                      </select>
+                      {ticket.status === TicketStatus.RESOLVED || ticket.status === TicketStatus.CLOSED ? (
+                        <div
+                          className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg border opacity-80 cursor-not-allowed ${urgencyColor}`}
+                          title="Tingkat urgensi tidak dapat diedit karena tiket sudah selesai"
+                        >
+                          <Lock className="w-3 h-3 text-slate-500 shrink-0" />
+                          <span>
+                            {ticket.urgency === "EMERGENCY" && "🔴 P1 - Darurat"}
+                            {ticket.urgency === "HIGH" && "🟠 P2 - Tinggi"}
+                            {ticket.urgency === "MEDIUM" && "🟡 P3 - Sedang"}
+                            {ticket.urgency === "LOW" && "🟢 P4 - Rendah"}
+                          </span>
+                        </div>
+                      ) : (
+                        <select
+                          disabled={isPending}
+                          value={ticket.urgency}
+                          onChange={(e) => handleUpdateUrgency(ticket.id, e.target.value as TicketUrgency)}
+                          className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border focus:outline-none focus:ring-2 focus:ring-sky-500 transition-all ${urgencyColor}`}
+                          title="Tentukan / Ubah Urgensi Tiket"
+                        >
+                          <option value="EMERGENCY">🔴 P1 - Darurat</option>
+                          <option value="HIGH">🟠 P2 - Tinggi</option>
+                          <option value="MEDIUM">🟡 P3 - Sedang</option>
+                          <option value="LOW">🟢 P4 - Rendah</option>
+                        </select>
+                      )}
                     </div>
 
                     {/* Penugasan Teknisi */}

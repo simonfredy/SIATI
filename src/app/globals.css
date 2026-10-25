@@ -39,6 +39,24 @@ body {
     color: #000000 !important;
     font-size: 10pt !important;
   }
+  body.printing-repair-report * {
+    visibility: hidden;
+  }
+  body.printing-repair-report #siati-repair-report-print,
+  body.printing-repair-report #siati-repair-report-print * {
+    visibility: visible;
+  }
+  body.printing-repair-report #siati-repair-report-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    display: block !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
   .print-avoid-break {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
