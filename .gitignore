@@ -42,3 +42,9 @@ next-env.d.ts
 
 #IMAGE AND VIDEO
 uploads
+
+#antislop agent
+.agents
+anti-slop
+*.md
+!README.md

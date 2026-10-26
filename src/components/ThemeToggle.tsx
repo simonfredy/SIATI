@@ -9,7 +9,6 @@ export default function ThemeToggle() {
 
   useEffect(() => {
     setMounted(true);
-    // Cek preferensi tersimpan di localStorage atau default ke Light
     const saved = localStorage.getItem("siati_theme");
     if (saved === "dark") {
       setIsDark(true);
@@ -34,7 +33,7 @@ export default function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800" />
+      <div className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-slate-100 dark:bg-slate-800" />
     );
   }
 
@@ -42,12 +41,12 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 shadow-sm transition-all active:scale-95 flex items-center justify-center"
-      title={isDark ? "Ganti ke Tema Terang (Light)" : "Ganti ke Tema Gelap (Dark)"}
+      className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 shadow-sm transition-all active:scale-95 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+      title={isDark ? "Ganti ke Tema Terang" : "Ganti ke Tema Gelap"}
       aria-label="Toggle Theme"
     >
       {isDark ? (
-        <Sun className="w-4 h-4 text-amber-400 animate-spin-slow" />
+        <Sun className="w-4 h-4 text-amber-400" />
       ) : (
         <Moon className="w-4 h-4 text-sky-600" />
       )}

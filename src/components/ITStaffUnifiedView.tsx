@@ -295,7 +295,7 @@ export default function ITStaffUnifiedView({
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 text-[11px] xs:text-xs font-semibold">
             <Zap className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
-            Staf TI — Pusat Kendali & Pengerjaan
+            Staf TI: Pusat Kendali & Pengerjaan
           </div>
           <h2 className="text-base xs:text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
             Pusat Kendali & Workbench: {currentUserName}
@@ -355,7 +355,7 @@ export default function ITStaffUnifiedView({
           <span className="truncate">Antrean & Urgensi</span>
           <span className={`px-1.5 xs:px-2 py-0.5 rounded-full text-[10px] xs:text-xs font-extrabold shrink-0 ${
             unassignedTickets.length > 0
-              ? "bg-rose-600 text-white animate-pulse"
+              ? "bg-rose-600 text-white"
               : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
           }`}>
             {unassignedTickets.length}
@@ -363,9 +363,6 @@ export default function ITStaffUnifiedView({
         </button>
       </div>
 
-      {/* ========================================================================= */}
-      {/* TAMPILAN 1: PENGERJAAN SAYA (WORKBENCH TEKNISI)                          */}
-      {/* ========================================================================= */}
       {mainView === "MY_WORK" && (
         <div className="space-y-5">
           {/* Banner Peringatan Tiket Baru Masuk yang Belum Diambil */}
@@ -378,7 +375,7 @@ export default function ITStaffUnifiedView({
                 <div>
                   <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <span>{unassignedTickets.length} Tiket Baru Masuk Menunggu Penanganan</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-600 text-white font-extrabold animate-pulse">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-600 text-white font-extrabold">
                       Siap Diambil
                     </span>
                   </h4>
@@ -704,9 +701,6 @@ export default function ITStaffUnifiedView({
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* TAMPILAN 2: MEJA ANTREAN & MONITORING RS (HELPDESK COMMAND CENTER)       */}
-      {/* ========================================================================= */}
       {mainView === "HELPDESK_QUEUE" && (
         <div className="space-y-5">
           {/* Baris Kartu Metrik Waktu SLA - Responsive across Fold, Tablet, and Desktop */}

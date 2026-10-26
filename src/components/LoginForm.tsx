@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useTransition } from "react";
 import { loginAction } from "@/actions/auth";
-import { RefreshCw, Lock, User, ShieldCheck, AlertCircle, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { RefreshCw, Lock, User, ShieldCheck, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface CaptchaResponse {
@@ -33,7 +33,6 @@ export default function LoginForm() {
     "CAPTCHA_ERROR" | "CREDENTIALS_ERROR" | "ACCOUNT_LOCKED" | "GENERAL_ERROR" | null
   >(null);
 
-  // Fungsi untuk memuat CAPTCHA baru dari server
   const loadNewCaptcha = async () => {
     setLoadingCaptcha(true);
     try {
@@ -85,7 +84,7 @@ export default function LoginForm() {
         setFieldErrors(result.fieldErrors || {});
         setErrorType(result.errorType || null);
 
-        // Muat ulang CAPTCHA baru setiap kali gagal untuk mencegah replay attack
+        // Refresh CAPTCHA on failure to prevent replay.
         loadNewCaptcha();
       }
     });
@@ -97,7 +96,6 @@ export default function LoginForm() {
   return (
     <div className="w-full max-w-md mx-auto p-2 xs:p-4 sm:p-6">
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200/80 dark:border-white/10 p-5 sm:p-8 transition-colors duration-200">
-        {/* Header Identitas RS */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-14 h-14 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-2xl mb-3 shadow-inner border border-sky-100 dark:border-sky-500/20">
             <ShieldCheck className="w-8 h-8" />
@@ -248,7 +246,7 @@ export default function LoginForm() {
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none transition-colors"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 rounded-lg transition-colors"
                 title={showPassword ? "Sembunyikan kata sandi" : "Lihat kata sandi"}
                 aria-label={showPassword ? "Sembunyikan kata sandi" : "Lihat kata sandi"}
               >
@@ -346,7 +344,7 @@ export default function LoginForm() {
             </div>
 
             {fieldErrors.captchaAnswer ? (
-              <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 mt-1.5 flex items-center gap-1 animate-pulse">
+              <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 mt-1.5 flex items-center gap-1">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>{fieldErrors.captchaAnswer}</span>
               </p>
@@ -357,11 +355,10 @@ export default function LoginForm() {
             )}
           </div>
 
-          {/* Tombol Masuk Utama */}
           <button
             type="submit"
             disabled={isPending}
-            className="w-full mt-2 py-3.5 px-4 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 active:scale-[0.99] text-white font-semibold rounded-xl shadow-md shadow-sky-600/20 flex items-center justify-center gap-2 text-sm transition-all disabled:opacity-60 disabled:pointer-events-none"
+            className="w-full mt-2 py-3.5 px-4 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-semibold rounded-xl shadow-sm flex items-center justify-center gap-2 text-sm transition-all disabled:opacity-60 disabled:pointer-events-none"
           >
             {isPending ? (
               <>
@@ -369,10 +366,7 @@ export default function LoginForm() {
                 Memverifikasi...
               </>
             ) : (
-              <>
-                Masuk ke SIATI
-                <ArrowRight className="w-4 h-4" />
-              </>
+              "Masuk ke SIATI"
             )}
           </button>
         </form>

@@ -7,8 +7,8 @@
 | :--- | :--- |
 | **Nama Produk** | **SIATI** (Sistem Informasi Aduan & Ticketing IT) |
 | **Instansi Sasaran** | Rumah Sakit (Pemerintah, Daerah, Swasta) |
-| **Versi Dokumen** | **1.3.0** *(Updated with Executive Management Portal, SLA Scorecard, SKP Matrix, & Official Report Export)* |
-| **Status** | **Approved & Production-Ready** |
+| **Versi Dokumen** | **1.4.0** *(Updated with Antislop Code Hygiene, Clean UI & Engineering Standards)* |
+| **Status** | **Under Refactoring Review (Awaiting User Plan Approval)** |
 | **Pola Arsitektur** | **Fullstack TypeScript (Next.js 16+ Turbopack App Router + PWA)** |
 | **Database & ORM** | **MariaDB 10.11+ LTS** dengan **Prisma ORM 6.x** |
 | **Server & Reverse Proxy** | **Nginx** (SSL TLS 1.3, Rate Limiting, Protected Storage via `X-Accel`) |
@@ -526,3 +526,45 @@ Dokumen PRD ini telah disesuaikan sepenuhnya dengan kebutuhan operasional Rumah 
 * **Transparansi**: Penghitungan waktu respon dan resolusi otomatis dalam hitungan menit untuk KPI objektif tim IT.
 * **Keamanan Maksimal**: Standar keamanan data kesehatan, anti-malware upload pipeline, dan server hardening Nginx anti-hacker.
 * **Efisiensi Anggaran**: Memanfaatkan stack open-source TypeScript, MariaDB, dan Self-Hosted WhatsApp Baileys tanpa biaya langganan gateway bulanan.
+
+---
+
+## 10. Standar Rekayasa Kode & Kebijakan Anti-Slop (Antislop Code & UI Standards)
+
+Sebagai jaminan mutu rekayasa perangkat lunak (*software craftsmanship*), codebase SIATI menerapkan standar kepatuhan **Antislop** (`.agents/skills/antislop/`) secara menyeluruh untuk mengeliminasi kode generik AI, komentar bising, dan pola antarmuka klise:
+
+### 10.1 Kebijakan Higienitas Komentar Kode (Code Comment Hygiene)
+1. **Prinsip Dasar**: Komentar hanya dipertahankan apabila memuat informasi yang **tidak dapat ditunjukkan oleh baris kode itu sendiri** (alasan bisnis krusial, mitigasi serangan siber, atau pertimbangan konkurensi).
+2. **Larangan Keras**:
+   - Dilarang membuat komentar narasi langkah berurutan (`// 1. Validasi`, `// 2. Simpan DB`, `// 3. Respon`).
+   - Dilarang membuat komentar yang hanya mengulang nama fungsi atau deklarasi variabel (*restating the obvious*).
+   - Dilarang menggunakan pemisah dekoratif banner (`// ====================`), emoji dekoratif (`// ✅`, `// 🚀`), atau penanda akhir blok (`} // end if`).
+3. **Panjang & Gaya Bahasa**:
+   - Komentar wajib singkat: **Maksimal 1 baris** (paling banyak 2 baris jika memuat fakta teknis terpisah).
+   - Ditulis dengan kalimat santun, ringkas, huruf kecil teratur (*sentence case*), tanpa huruf kapital berteriak (*ALL CAPS*).
+
+### 10.2 Standar Bahasa & Copywriting (Copywriting Standards)
+1. **Larangan Mutlak Karakter Em Dash (`—`)**:
+   - Seluruh teks UI, label dropdown, judul, dan pesan dilarang memuat karakter em dash (`—`). Gunakan koma (`,`), titik dua (`:`), atau tanda kurung `()`.
+2. **Pembersihan Kata Bising (No Buzzwords)**:
+   - Dilarang menyematkan label pemasaran tak berdasar seperti *"Revolutionary"*, *"Seamless"*, *"Zero-Trust Protected"* pada teks statis UI. Gunakan bahasa lugas faktual operasional rumah sakit.
+3. **Tombol Tindakan Spesifik (Specific CTAs)**:
+   - Tombol aksi wajib menyebutkan tindakan nyata (contoh: *"Terbitkan Laporan Aduan"*, *"Konfirmasi Selesai"*), dan dilarang menambahkan panah dekoratif template (`→` atau `↗`) yang tidak memiliki fungsi arah nyata.
+
+### 10.3 Restriksi Desain Visual & Tata Letak (UI & Visual Restraint)
+1. **Eliminasi Trend Stacking**:
+   - Dilarang menumpuk tren desain tanpa alasan fungsional: tidak boleh menggabungkan *dot-grid pattern*, lingkaran *radial blur orbs*, dan gradasi ungu-hitam generik secara bersamaan.
+   - Warna tema SIATI berpusat pada palet resmi fasilitas kesehatan: **Sky Blue** (aksen pelayanan) dan **Slate** (struktur netral).
+2. **Larangan Emoji Dekoratif pada Konten UI**:
+   - Dilarang menempelkan emoji literal pada judul kartu atau badge (contoh: `⏱️`, `📸`, `⚡`, `🌟`, `✅`). Gunakan tipografi bersih atau ikon fungsional yang relevan.
+3. **Penghentian Animasi Looping Tak Berujung**:
+   - Dilarang menggunakan animasi loop terus-menerus (`animate-pulse`, `animate-ping`) pada dot status atau badge. Indikator status wajib tampil solid, tenang, dan memiliki kontras yang terbaca.
+
+### 10.4 Aksesibilitas & Responsivitas Mobile-First
+1. **Hak Aksesibilitas Zoom Pengguna**:
+   - Viewport metadata dilarang mematikan zoom (`userScalable: false` dilarang). Pengguna dengan keterbatasan visual harus dapat memperbesar teks hingga 200% tanpa kerusakan tata letak (WCAG 1.4.4).
+2. **Target Sentuh Minimum 44 x 44 px**:
+   - Seluruh tombol interaktif, toggle tema, saklar status, dan navigasi seluler wajib memiliki area tap minimum 44 x 44 px untuk kenyamanan petugas medis di lapangan.
+3. **Indikator Fokus Keyboard**:
+   - Dilarang menghapus outline fokus (`focus:outline-none`) tanpa memberikan gaya pengganti `:focus-visible` berkontras tinggi minimal 3:1.
+

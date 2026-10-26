@@ -17,7 +17,6 @@ import { getHospitalProfileAction } from "@/actions/superadmin";
 
 export const instant = false;
 
-// Helper terpusat untuk mengambil data lengkap analitik manajemen eksekutif
 async function getManagementDashboardData() {
   const [rawTickets, rawUnits, rawCategories, rawTechnicians] = await Promise.all([
     prisma.ticket.findMany({
@@ -113,7 +112,6 @@ export default async function DashboardPage({
     redirect("/");
   }
 
-  // Ambil profil user lengkap beserta nama unit
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     include: { departmentUnit: true },
@@ -123,10 +121,8 @@ export default async function DashboardPage({
     redirect("/");
   }
 
-  // Ambil profil resmi instansi rumah sakit (singleton)
   const hospitalProfile = await getHospitalProfileAction();
 
-  // 1. Jika Role adalah Pelapor Medis / Nakes (STAFF_USER)
   if (user.role === Role.STAFF_USER) {
     const rawTickets = await prisma.ticket.findMany({
       where: {
@@ -233,11 +229,10 @@ export default async function DashboardPage({
             hospitalLogo={hospitalProfile?.logoUrl}
           />
           <main className="flex-1 max-w-7xl xl:max-w-[1600px] w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-7 print:p-0 print:m-0 print:max-w-none print:w-full">
-            {/* Banner Otoritas Superadmin di Portal Manajemen */}
-            <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 text-white border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg print:hidden">
+            <div className="mb-6 p-4 rounded-2xl bg-slate-900 text-white border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm print:hidden">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center shrink-0 border border-purple-400/30">
-                  <Shield className="w-5 h-5 text-purple-300" />
+                <div className="w-10 h-10 rounded-xl bg-slate-800 text-sky-400 flex items-center justify-center shrink-0 border border-slate-700">
+                  <Shield className="w-5 h-5 text-sky-400" />
                 </div>
                 <div>
                   <div className="text-sm font-bold flex items-center gap-2 flex-wrap">
@@ -246,7 +241,7 @@ export default async function DashboardPage({
                       Akses Otoritas Penuh
                     </span>
                   </div>
-                  <p className="text-xs text-purple-200/80 mt-0.5">
+                  <p className="text-xs text-slate-400 mt-0.5">
                     Anda sedang meninjau analitik SLA eksekutif, rekapitulasi audit tiket, dan matriks kinerja staf TI sebagai Super Admin.
                   </p>
                 </div>

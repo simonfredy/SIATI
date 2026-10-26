@@ -302,7 +302,7 @@ export default function ReporterView({ tickets, userName, unitName, hospitalProf
                     </div>
 
                     <span className={`text-xs font-bold px-3 py-1 rounded-full border flex items-center gap-1.5 self-start xs:self-auto ${statusBadge.color}`}>
-                      <span className="w-2 h-2 rounded-full bg-current animate-pulse"></span>
+                      <span className="w-2 h-2 rounded-full bg-current"></span>
                       {statusBadge.label}
                     </span>
                   </div>

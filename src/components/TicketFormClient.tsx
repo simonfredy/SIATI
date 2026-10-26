@@ -68,7 +68,6 @@ export default function TicketFormClient({
   const photoInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  // Quick suggestions template
   const quickTags = [
     "Printer label pasien macet / paper jam",
     "SIMRS hang saat simpan rekam medis",
@@ -77,7 +76,6 @@ export default function TicketFormClient({
     "Koneksi WiFi / internet ruangan terputus",
   ];
 
-  // Upload handler with magic bytes validation
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -121,7 +119,7 @@ export default function TicketFormClient({
       const res = await createTicketAction({
         unitId,
         categoryId,
-        urgency: TicketUrgency.MEDIUM, // Tingkat urgensi ditentukan staf TI
+        urgency: TicketUrgency.MEDIUM,
         description,
         attachments: attachments.map((att) => ({
           storedFilename: att.storedFilename,
@@ -141,7 +139,6 @@ export default function TicketFormClient({
     });
   };
 
-  // Tampilan Sukses Setelah Terbit
   if (successResult) {
     return (
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-6 sm:p-8 md:p-10 text-center space-y-5 shadow-lg max-w-lg mx-auto transition-colors">
@@ -217,7 +214,6 @@ export default function TicketFormClient({
         <div className="grid grid-cols-1 md:grid-cols-12 gap-5 md:gap-8">
           {/* Kolom Kiri (Mobile: Atas, Tablet & Desktop: Kiri 6-kolom): Lokasi & Kategori */}
           <div className="md:col-span-6 space-y-5 sm:space-y-6">
-            {/* 1. Pilih Lokasi / Unit Ruangan */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                 <MapPin className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
@@ -230,7 +226,7 @@ export default function TicketFormClient({
               >
                 {units.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.name} — ({u.buildingZone})
+                    {u.name} ({u.buildingZone})
                   </option>
                 ))}
               </select>
@@ -239,7 +235,6 @@ export default function TicketFormClient({
               </span>
             </div>
 
-            {/* 2. Pilih Kategori Masalah IT */}
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">

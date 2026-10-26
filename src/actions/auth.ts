@@ -29,7 +29,6 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
     captchaAnswer: formData.get("captchaAnswer"),
   };
 
-  // 1. Validasi Skema Input dengan Zod
   const validation = loginSchema.safeParse(rawData);
   if (!validation.success) {
     const fieldErrors: Record<string, string> = {};
@@ -47,7 +46,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
 
   const { username, password, captchaToken, captchaAnswer } = validation.data;
 
-  // 2. Pre-Auth Gate: Verifikasi CAPTCHA terlebih dahulu (Mencegah CPU Exhaustion DoS)
+  // Verify CAPTCHA before password hashing to protect against CPU exhaustion.
   const captchaCheck = await verifyCaptcha(captchaToken, captchaAnswer, ipAddress);
   if (!captchaCheck.success) {
     return {
@@ -58,7 +57,6 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
     };
   }
 
-  // 3. Cari Pengguna Berdasarkan Username (Nama Depan) atau NIP
   const normalizedUsername = username.toLowerCase();
   const user = await prisma.user.findFirst({
     where: {
@@ -70,7 +68,6 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
   });
 
   if (!user) {
-    // Audit Log login gagal (User tidak ditemukan)
     await prisma.systemAuditLog.create({
       data: {
         action: "FAILED_LOGIN_USER_NOT_FOUND",
@@ -91,7 +88,6 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
     };
   }
 
-  // 4. Periksa apakah akun dinonaktifkan atau terkunci
   if (!user.isActive) {
     return {
       success: false,
@@ -116,7 +112,6 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
     };
   }
 
-  // 5. Verifikasi Password Hashing
   const isPasswordValid = await verifyPassword(password, user.passwordHash);
 
   if (!isPasswordValid) {
@@ -124,7 +119,7 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
     let lockTime: Date | null = null;
 
     if (updatedFailedCount >= 5) {
-      lockTime = new Date(Date.now() + 15 * 60 * 1000); // Kunci 15 menit
+      lockTime = new Date(Date.now() + 15 * 60 * 1000);
     }
 
     await prisma.user.update({
@@ -168,7 +163,6 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
     };
   }
 
-  // 6. Reset Failed Count & Perbarui Sesi
   await prisma.user.update({
     where: { id: user.id },
     data: {
@@ -177,7 +171,6 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
     },
   });
 
-  // 7. Generate JWT Signed Token & Pasang Secure Cookie
   const token = await signSessionToken({
     userId: user.id,
     username: user.username,
@@ -189,7 +182,6 @@ export async function loginAction(formData: FormData): Promise<ActionResult> {
 
   await setSessionCookie(token);
 
-  // 8. Catat Audit Log Login Berhasil
   await prisma.systemAuditLog.create({
     data: {
       userId: user.id,

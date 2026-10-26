@@ -1,7 +1,8 @@
 import crypto from "crypto";
 
 const CAPTCHA_SECRET = process.env.CAPTCHA_SECRET_KEY || "siati_default_super_secret_captcha_key";
-const CAPTCHA_CHARSET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"; // Karakter aman (tanpa 0, O, 1, I yang ambigu)
+// Excludes ambiguous glyphs (0, O, 1, I).
+const CAPTCHA_CHARSET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 export interface CaptchaData {
   token: string;
@@ -9,10 +10,6 @@ export interface CaptchaData {
   expiresAt: number;
 }
 
-/**
- * Menghasilkan Dynamic SVG Text / Alphanumeric CAPTCHA (Ketik apa yang terlihat pada gambar).
- * Bekerja 100% offline di jaringan lokal intranet Rumah Sakit.
- */
 export function generateTextCaptcha(): CaptchaData {
   const codeLength = 5;
   let code = "";
@@ -21,41 +18,34 @@ export function generateTextCaptcha(): CaptchaData {
     code += CAPTCHA_CHARSET[randomIndex];
   }
 
-  const expiresAt = Date.now() + 2 * 60 * 1000; // Berlaku 2 Menit (120 detik)
+  const expiresAt = Date.now() + 2 * 60 * 1000;
 
-  // HMAC Signature: hash(CODE_UPPERCASE + expiresAt + secret)
   const hmac = crypto.createHmac("sha256", CAPTCHA_SECRET);
   hmac.update(`${code.toUpperCase()}:${expiresAt}`);
   const signature = hmac.digest("hex");
   const token = `${expiresAt}.${signature}`;
 
-  // Warna-warna teks distorsi berstandar tinggi
   const textColors = ["#1e3a8a", "#0369a1", "#0f766e", "#374151", "#7c2d12", "#1d4ed8", "#4338ca"];
 
-  // Posisi dan rotasi setiap karakter agar sulit dibaca bot namun jelas bagi nakes
   const charactersSvg = code
     .split("")
     .map((char, index) => {
       const x = 20 + index * 26 + (Math.random() * 4 - 2);
       const y = 30 + (Math.random() * 6 - 3);
-      const rotate = Math.floor(Math.random() * 32) - 16; // Rotasi -16 sampai +16 derajat
+      const rotate = Math.floor(Math.random() * 32) - 16;
       const color = textColors[Math.floor(Math.random() * textColors.length)];
-      const fontSize = Math.floor(Math.random() * 4) + 23; // 23px - 26px
+      const fontSize = Math.floor(Math.random() * 4) + 23;
       return `<text x="${x}" y="${y}" transform="rotate(${rotate}, ${x}, ${y})" font-family="'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="${fontSize}" fill="${color}" letter-spacing="1">
         ${char}
       </text>`;
     })
     .join("");
 
-  // Garis noise bergelombang (Wavy Bézier curves)
   const curveY1 = 12 + Math.floor(Math.random() * 20);
   const curveY2 = 12 + Math.floor(Math.random() * 20);
   const waveLine = `<path d="M 5 ${curveY1} Q 75 ${45 - curveY1} 155 ${curveY2}" stroke="#cbd5e1" stroke-width="2" fill="none" />`;
-
-  // Garis noise putus-putus
   const dashLine = `<line x1="10" y1="${38 - curveY1}" x2="150" y2="${curveY1}" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4,4" />`;
 
-  // Titik-titik acak (Noise dots)
   const noiseDots = Array.from({ length: 12 })
     .map(() => {
       const cx = Math.floor(Math.random() * 155) + 5;
@@ -80,9 +70,6 @@ export function generateTextCaptcha(): CaptchaData {
   };
 }
 
-/**
- * Memvalidasi input kode CAPTCHA dari pengguna (Mendukung Case-Insensitive Matching).
- */
 export async function verifyCaptcha(
   token: string | undefined,
   userAnswer: string | undefined,
@@ -117,7 +104,6 @@ export async function verifyCaptcha(
     }
   }
 
-  // Default: Mode Offline Alphanumeric (Self-Hosted HMAC)
   if (!token || !userAnswer) {
     return { success: false, error: "Kode gambar CAPTCHA wajib diketik." };
   }
@@ -134,13 +120,12 @@ export async function verifyCaptcha(
     return { success: false, error: "CAPTCHA telah kedaluwarsa. Silakan muat ulang kode baru." };
   }
 
-  // Normalisasi jawaban user (Uppercase, tanpa spasi)
   const cleanedAnswer = userAnswer.trim().toUpperCase();
   const expectedHmac = crypto.createHmac("sha256", CAPTCHA_SECRET);
   expectedHmac.update(`${cleanedAnswer}:${expiresAt}`);
   const expectedSignature = expectedHmac.digest("hex");
 
-  // Constant-time comparison untuk mencegah timing attack
+  // Constant-time check prevents timing side-channel attacks.
   if (crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
     return { success: true };
   }

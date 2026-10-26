@@ -42,7 +42,6 @@ export async function createTicketAction(
     return { success: false, message: "Akses ditolak. Silakan login terlebih dahulu." };
   }
 
-  // 1. Validasi Input
   const validation = createTicketSchema.safeParse({
     unitId: Number(data.unitId),
     categoryId: Number(data.categoryId),
@@ -59,7 +58,6 @@ export async function createTicketAction(
   }
 
   try {
-    // 2. Generate Nomor Tiket Urut Harian (TKT-YYYYMMDD-XXXX) dengan Concurrency Safe Loop
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -73,7 +71,6 @@ export async function createTicketAction(
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        // Cari tiket dengan urutan nomor tertinggi yang terbit pada hari ini
         const latestTicket = await prisma.ticket.findFirst({
           where: {
             ticketNumber: {
@@ -102,7 +99,6 @@ export async function createTicketAction(
         const sequenceNumber = String(nextSeq).padStart(4, "0");
         ticketNumber = `${ticketPrefix}${sequenceNumber}`;
 
-        // 3. Simpan Tiket ke Database MariaDB
         ticket = await prisma.ticket.create({
           data: {
             ticketNumber,
@@ -140,10 +136,9 @@ export async function createTicketAction(
           },
         });
 
-        // Sukses dibuat, keluar dari retry loop
         break;
       } catch (err) {
-        // Jika ada pengguna lain yang membuat tiket di milidetik yang sama persis (P2002 unique constraint)
+        // Retry on unique constraint collision (P2002) from concurrent ticket creation.
         if (
           err instanceof Prisma.PrismaClientKnownRequestError &&
           err.code === "P2002" &&
@@ -160,7 +155,6 @@ export async function createTicketAction(
       throw new Error("Gagal mengalokasikan nomor tiket urut setelah percobaan maksimal.");
     }
 
-    // 4. Catat Audit Log
     await prisma.systemAuditLog.create({
       data: {
         userId: user.userId,
@@ -171,7 +165,6 @@ export async function createTicketAction(
       },
     });
 
-    // 5. Siarkan Notifikasi Real-Time (SSE)
     broadcastRealtimeEvent({
       type: "TICKET_CREATED",
       ticketId: ticket.id,
@@ -250,9 +243,7 @@ export async function updateTicketStatusAction(data: {
       updateData.status = newStatus;
     }
 
-    // 1. Logika Durasi Respon (TTR): Saat tiket pertama kali di-assign ke teknisi
     if (newStatus === TicketStatus.ASSIGNED) {
-      // Cegah race condition jika dua staf TI mengklik 'Ambil Tiket' secara bersamaan
       if (
         ticket.status !== TicketStatus.SUBMITTED &&
         ticket.assignedTechnicianId &&
@@ -272,7 +263,6 @@ export async function updateTicketStatusAction(data: {
       updateData.responseMinutes = responseMinutes;
     }
 
-    // 2. Logika Mulai Pengerjaan Lapangan (Work Started)
     if (newStatus === TicketStatus.IN_PROGRESS && !ticket.workStartedAt) {
       updateData.workStartedAt = now;
       if (!ticket.assignedTechnicianId) {
@@ -280,7 +270,6 @@ export async function updateTicketStatusAction(data: {
       }
     }
 
-    // 3. Logika Selesai Pengerjaan (Resolved) & Perhitungan Menit Kerja Bersih
     if (newStatus === TicketStatus.RESOLVED) {
       updateData.workResolvedAt = now;
       const startTime = ticket.workStartedAt || ticket.firstAssignedAt || ticket.submittedAt;
@@ -301,14 +290,12 @@ export async function updateTicketStatusAction(data: {
       updateData.totalLeadMinutes = totalLeadMinutes;
     }
 
-    // 4. Logika Tiket Ditutup (Closed)
     if (newStatus === TicketStatus.CLOSED) {
       updateData.closedAt = now;
     }
 
     const finalStatus = newStatus || ticket.status;
 
-    // Update Tiket dan Buat Timeline Log
     await prisma.ticket.update({
       where: { id: ticketId },
       data: {
@@ -325,7 +312,6 @@ export async function updateTicketStatusAction(data: {
       },
     });
 
-    // Catat Audit Log
     await prisma.systemAuditLog.create({
       data: {
         userId: user.userId,
@@ -336,12 +322,7 @@ export async function updateTicketStatusAction(data: {
       },
     });
 
-    // Siarkan Pembaruan Status Real-Time (SSE)
-    // Sesuai aturan: Notifikasi HANYA untuk:
-    // 1. Yang menangani tiket (ASSIGNED)
-    // 2. Pergantian parts (PENDING_PARTS)
-    // 3. Tiket selesai (RESOLVED / CLOSED)
-    // Pergantian urgensi maupun perubahan status biasa TIDAK memunculkan notifikasi toast/audio.
+    // Broadcast realtime event for ASSIGNED, PENDING_PARTS, and RESOLVED/CLOSED states.
     if (!silent) {
       if (newStatus === TicketStatus.ASSIGNED) {
         broadcastRealtimeEvent({

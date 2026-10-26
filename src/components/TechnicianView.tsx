@@ -261,7 +261,7 @@ export default function TechnicianView({
                   <div
                     className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold ${
                       isOverdue
-                        ? "bg-rose-500 text-white animate-pulse"
+                        ? "bg-rose-500 text-white"
                         : "bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-sky-300 border border-slate-200 dark:border-sky-400/20"
                     }`}
                   >

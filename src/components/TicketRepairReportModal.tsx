@@ -35,7 +35,6 @@ export default function TicketRepairReportModal({
   hospitalProfile,
   onClose,
 }: TicketRepairReportModalProps) {
-  // Lock body scroll and listen for ESC key
   useEffect(() => {
     if (!ticket) return;
 
@@ -57,7 +56,6 @@ export default function TicketRepairReportModal({
 
   if (!ticket) return null;
 
-  // Nama Kota dari alamat rumah sakit untuk bagian tertanda
   let hospitalCity = "Kota Rumah Sakit";
   if (hospitalProfile?.address) {
     const parts = hospitalProfile.address.split(",");
@@ -66,7 +64,6 @@ export default function TicketRepairReportModal({
     }
   }
 
-  // Format Tanggal & Waktu Bahasa Indonesia
   const formatDate = (date: Date | string | null | undefined) => {
     if (!date) return "-";
     const d = new Date(date);
@@ -93,12 +90,10 @@ export default function TicketRepairReportModal({
   const rawTicketNum = ticket.ticketNumber.replace("TKT-", "");
   const docRegNumber = `BA-IT/${rawTicketNum}/${regMonth}/${regYear}`;
 
-  // Penentuan Status SLA
   const targetSla = ticket.category.targetSlaMinutes || 30;
   const actualWorkMinutes = ticket.repairMinutes ?? 0;
   const isSlaCompliant = actualWorkMinutes <= targetSla;
 
-  // Label Urgensi
   const getUrgencyLabel = (urgency: TicketUrgency) => {
     switch (urgency) {
       case TicketUrgency.EMERGENCY:
@@ -116,10 +111,8 @@ export default function TicketRepairReportModal({
 
   const urgencyMeta = getUrgencyLabel(ticket.urgency);
 
-  // Filter foto lampiran awal
   const imageAttachments = ticket.attachments?.filter((a) => a.fileType === "IMAGE") || [];
 
-  // Pemicu Cetak Dokumen Resmi
   const handlePrint = () => {
     document.body.classList.add("printing-repair-report");
     window.print();
@@ -131,7 +124,6 @@ export default function TicketRepairReportModal({
   const ratingScore = ticket.rating?.ratingScore ?? 5;
   const ratingFeedback = ticket.rating?.feedback;
 
-  // Nama Pelapor & Nama Teknisi
   const reporterName = ticket.reporter?.fullName || "Pelapor Ruangan";
   const technicianName = ticket.assignedTechnician?.fullName || "Staf TI Penanggung Jawab";
 
@@ -153,9 +145,6 @@ export default function TicketRepairReportModal({
           onClick={(e) => e.stopPropagation()}
           className="bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-white/15 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[95vh] overflow-hidden transition-all duration-300"
         >
-          {/* ========================================================================= */}
-          {/* HEADER TOOLBAR MODAL (HANYA MUNCUL DI LAYAR - PRINT HIDDEN)              */}
-          {/* ========================================================================= */}
           <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-white/10 px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 shrink-0 print:hidden">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
@@ -182,7 +171,7 @@ export default function TicketRepairReportModal({
               <button
                 type="button"
                 onClick={handlePrint}
-                className="px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-sky-600/20 active:scale-95 transition-all cursor-pointer"
+                className="px-3.5 sm:px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
                 title="Cetak Dokumen atau Simpan sebagai PDF"
               >
                 <Printer className="w-4 h-4" />
@@ -200,9 +189,6 @@ export default function TicketRepairReportModal({
             </div>
           </div>
 
-          {/* ========================================================================= */}
-          {/* AREA DOKUMEN KERTAS RESMI FORMAT A4 (DAPAT DI-SCROLL DI SCREEN, UTUH DI PRINT) */}
-          {/* ========================================================================= */}
           <div id="report-modal-scroll-area" className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8">
             <div
               id="siati-repair-report-print"

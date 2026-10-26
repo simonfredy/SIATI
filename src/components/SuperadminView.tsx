@@ -454,7 +454,7 @@ export default function SuperadminView({
         return {
           label: "Baru Masuk",
           color: "bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/30",
-          dot: "bg-sky-500 animate-pulse",
+          dot: "bg-sky-500",
         };
       case TicketStatus.ASSIGNED:
         return {
@@ -466,7 +466,7 @@ export default function SuperadminView({
         return {
           label: "Sedang Dikerjakan",
           color: "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30",
-          dot: "bg-amber-500 animate-pulse",
+          dot: "bg-amber-500",
         };
       case TicketStatus.PENDING_PARTS:
         return {
@@ -624,9 +624,7 @@ export default function SuperadminView({
 
   return (
     <div className="space-y-6 pb-20">
-      {/* ========================================================================= */}
-      {/* TATA LETAK UTAMA DASHBOARD DENGAN EXPANDABLE SIDEBAR                     */}
-      {/* ========================================================================= */}
+      {/* Tata letak utama dashboard */}
       <div className="flex flex-col md:flex-row items-start gap-4 lg:gap-6">
         {/* SIDEBAR NAVIGASI (TABLET & LAPTOP/PC) DENGAN EXPAND-COLLAPSE */}
         <aside
@@ -926,7 +924,7 @@ export default function SuperadminView({
                   >
                     <Layers className="w-4 h-4" />
                     {isSidebarCollapsed && unresolvedTickets.length > 0 && (
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-600 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-600 ring-2 ring-white dark:ring-slate-900" />
                     )}
                   </div>
                   {!isSidebarCollapsed && (
@@ -1044,8 +1042,7 @@ export default function SuperadminView({
         {/* AREA UTAMA DASHBOARD DI SEBELAH KANAN SIDEBAR */}
         <div className="flex-1 min-w-0 w-full space-y-6">
           {/* Header Utama Superadmin */}
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-5 sm:p-7 border border-indigo-900/50 shadow-xl relative overflow-hidden">
-        <div className="absolute -right-16 -top-16 w-56 h-56 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="bg-slate-900 text-white rounded-2xl p-5 sm:p-7 border border-slate-800 shadow-sm relative overflow-hidden">
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1.5">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-400/30 backdrop-blur-sm">
@@ -1261,9 +1258,7 @@ export default function SuperadminView({
           </a>
         </div>
 
-      {/* ========================================================================= */}
-      {/* TAB 1: MANAJEMEN PENGGUNA (USER MANAGEMENT)                               */}
-      {/* ========================================================================= */}
+      {/* Tab 1: Manajemen pengguna */}
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
@@ -1424,9 +1419,7 @@ export default function SuperadminView({
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* TAB 2: MASTER UNIT / BANGSAL PELAYANAN RS                                 */}
-      {/* ========================================================================= */}
+      {/* Tab 2: Master unit */}
       {activeTab === "UNITS" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -1478,9 +1471,7 @@ export default function SuperadminView({
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* TAB 3: MASTER KATEGORI & TARGET SLA                                       */}
-      {/* ========================================================================= */}
+      {/* Tab 3: Master kategori & target SLA */}
       {activeTab === "CATEGORIES" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -1572,9 +1563,7 @@ export default function SuperadminView({
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* TAB 4: LOG AUDIT & KEAMANAN SISTEM (AUDIT TRAIL)                           */}
-      {/* ========================================================================= */}
+      {/* Tab 4: Log audit */}
       {activeTab === "AUDIT_LOGS" && (
         <div className="space-y-4">
           <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -1661,9 +1650,7 @@ export default function SuperadminView({
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* TAB 5: DAFTAR TIKET ANTREAN LAYANAN TI (MONITORING MASUK & BELUM SELESAI)  */}
-      {/* ========================================================================= */}
+      {/* Tab 5: Tiket antrean layanan TI */}
       {activeTab === "TICKETS" && (
         <div className="space-y-5">
           {/* Header Banner Tab Tiket */}
@@ -2356,9 +2343,7 @@ export default function SuperadminView({
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* TAB 6: PROFIL RUMAH SAKIT & IDENTITAS INSTANSI (DYNAMIC KOP SURAT)        */}
-      {/* ========================================================================= */}
+      {/* Tab 6: Profil rumah sakit */}
       {activeTab === "HOSPITAL_PROFILE" && (
         <div className="space-y-6">
           {/* Header Banner Tab Profil Rumah Sakit */}
@@ -2755,7 +2740,7 @@ export default function SuperadminView({
                       Pratinjau Kop Surat Resmi
                     </span>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 animate-pulse">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                     Live Real-Time
                   </span>
                 </div>
@@ -2870,9 +2855,7 @@ export default function SuperadminView({
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* MODAL 1: TAMBAH PENGGUNA BARU                                             */}
-      {/* ========================================================================= */}
+      {/* Modal: Tambah pengguna baru */}
       <AnimatePresence>
         {isAddUserOpen && (
           <motion.div
@@ -3076,7 +3059,7 @@ export default function SuperadminView({
                   >
                     {units.map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.name} — ({u.buildingZone})
+                        {u.name} ({u.buildingZone})
                       </option>
                     ))}
                   </select>
@@ -3136,9 +3119,7 @@ export default function SuperadminView({
       )}
     </AnimatePresence>
 
-      {/* ========================================================================= */}
-      {/* MODAL 2: TAMBAH MASTER UNIT                                               */}
-      {/* ========================================================================= */}
+      {/* Modal: Tambah master unit */}
       <AnimatePresence>
         {isAddUnitOpen && (
           <motion.div
@@ -3229,9 +3210,7 @@ export default function SuperadminView({
       )}
     </AnimatePresence>
 
-      {/* ========================================================================= */}
-      {/* MODAL 3: TAMBAH KATEGORI KENDALA & SLA                                    */}
-      {/* ========================================================================= */}
+      {/* Modal: Tambah kategori kendala & SLA */}
       <AnimatePresence>
         {isAddCatOpen && (
           <motion.div

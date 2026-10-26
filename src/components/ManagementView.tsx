@@ -217,9 +217,7 @@ export default function ManagementView({
     });
   };
 
-  // ========================================================
-  // 1. RENTANG WAKTU PER TANGGAL UNTUK 6 KARTU KPI ATAS
-  // ========================================================
+  // Rentang waktu 6 kartu KPI atas
   const [cardsStartDate, setCardsStartDate] = useState<string>("");
   const [cardsEndDate, setCardsEndDate] = useState<string>("");
 
@@ -229,9 +227,7 @@ export default function ManagementView({
     setCardsEndDate(end);
   };
 
-  // ========================================================
-  // 2. RENTANG WAKTU PER TANGGAL UNTUK SETIAP MENU / TAB
-  // ========================================================
+  // Rentang waktu per menu/tab
   // Tab 1: Ikhtisar & Heatmap Ruangan
   const [tab1StartDate, setTab1StartDate] = useState<string>("");
   const [tab1EndDate, setTab1EndDate] = useState<string>("");
@@ -353,9 +349,7 @@ export default function ManagementView({
     }
   };
 
-  // ========================================================
-  // KALKULASI 6 KARTU KPI ATAS BERDASARKAN RENTANG TANGGAL KARTU
-  // ========================================================
+  // Kalkulasi 6 kartu KPI atas
   const cardsTickets = useMemo(() => {
     return tickets.filter((t) =>
       isDateInRange(t.submittedAt, cardsStartDate, cardsEndDate)
@@ -444,9 +438,7 @@ export default function ManagementView({
     };
   }, [cardsTickets]);
 
-  // ========================================================
-  // DATA TAB 1: IKHTISAR & HEATMAP RUANGAN (DENGAN TANGGAL SENDIRI)
-  // ========================================================
+  // Data tab 1: Ikhtisar & Heatmap Ruangan
   const tab1Tickets = useMemo(() => {
     return tickets.filter((t) =>
       isDateInRange(t.submittedAt, tab1StartDate, tab1EndDate)
@@ -526,9 +518,7 @@ export default function ManagementView({
     return unitStats.slice(startIdx, startIdx + unitsPerPage);
   }, [unitStats, unitPage]);
 
-  // ========================================================
-  // DATA TAB 2: MATRIKS KINERJA STAF TI (DENGAN TANGGAL SENDIRI)
-  // ========================================================
+  // Data tab 2: Matriks Kinerja Staf TI
   const tab2Tickets = useMemo(() => {
     return tickets.filter((t) =>
       isDateInRange(t.submittedAt, tab2StartDate, tab2EndDate)
@@ -650,9 +640,7 @@ export default function ManagementView({
     return technicianStats.slice(startIdx, startIdx + techPerPage);
   }, [technicianStats, techPage]);
 
-  // ========================================================
-  // DATA TAB 3: AUDIT REKAPITULASI TIKET DETAIL & PAGINATION
-  // ========================================================
+  // Data tab 3: Audit Rekapitulasi Tiket
   const tab3FilteredTickets = useMemo(() => {
     return tickets.filter((ticket) => {
       // 1. Filter Rentang Waktu Per Tanggal
@@ -726,9 +714,7 @@ export default function ManagementView({
     return tab3FilteredTickets.slice(startIdx, startIdx + ticketItemsPerPage);
   }, [tab3FilteredTickets, ticketPage, ticketItemsPerPage]);
 
-  // ========================================================
-  // DATA TAB 4: REKOMENDASI MANAJERIAL
-  // ========================================================
+  // Data tab 4: Rekomendasi Manajerial
   const tab4Tickets = useMemo(() => {
     return tickets.filter((t) =>
       isDateInRange(t.submittedAt, tab4StartDate, tab4EndDate)
@@ -821,9 +807,7 @@ export default function ManagementView({
     window.print();
   };
 
-  // ========================================================
-  // HELPER KOMPUTASI KHUSUS DOKUMEN CETAK LAPORAN RESMI (A4)
-  // ========================================================
+  // Helper komputasi dokumen cetak resmi
   const printCategoryStats = useMemo(() => {
     return categories.map((cat, idx) => {
       const catTickets = cardsTickets.filter((t) => t.category.id === cat.id);
@@ -1083,9 +1067,7 @@ export default function ManagementView({
 
   return (
     <div className="space-y-6">
-      {/* ========================================================================= */}
-      {/* DOKUMEN CETAK RESMI FORMAT LAPORAN RUMAH SAKIT (HANYA MUNCUL DI PRINT/PDF) */}
-      {/* ========================================================================= */}
+      {/* Dokumen cetak laporan rumah sakit (print/pdf) */}
       <div className="hidden print:block bg-white text-black p-0 m-0 space-y-5 text-left font-sans">
         {/* 1. KOP SURAT RESMI */}
         <div className="border-b-2 border-black pb-3">
@@ -1536,15 +1518,11 @@ export default function ManagementView({
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* TAMPILAN INTERAKTIF WEB DASHBOARD PORTAL MANAJEMEN (DISEMBUNYIKAN SAAT PRINT) */}
-      {/* ========================================================================= */}
+      {/* Tampilan web portal manajemen */}
       <div className="print:hidden space-y-6">
         {/* TATA LETAK UTAMA DASHBOARD DENGAN EXPANDABLE SIDEBAR */}
         <div className="flex flex-col md:flex-row items-start gap-4 lg:gap-6">
-        {/* ======================================================== */}
-        {/* SIDEBAR NAVIGASI (TABLET & LAPTOP/PC) EXPANDABLE/COLLAPSIBLE */}
-        {/* ======================================================== */}
+        {/* Sidebar navigasi */}
         <aside
           className={`hidden md:flex flex-col sticky top-20 shrink-0 transition-all duration-300 ease-in-out print:hidden ${
             isSidebarCollapsed ? "w-18 lg:w-20" : "w-64 lg:w-72"
@@ -1837,17 +1815,10 @@ export default function ManagementView({
           </div>
         </aside>
 
-        {/* ======================================================== */}
-        {/* AREA UTAMA DASHBOARD DI SEBELAH KANAN SIDEBAR */}
-        {/* ======================================================== */}
+        {/* Area utama dashboard */}
         <div className="flex-1 min-w-0 w-full space-y-6">
-          {/* ======================================================== */}
-          {/* 2. EXECUTIVE HERO BANNER */}
-          {/* ======================================================== */}
+          {/* Banner eksekutif */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-900 text-white p-5 sm:p-7 shadow-xl border border-white/10 print:hidden">
-        {/* Decorative Ambient Circles */}
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="absolute bottom-0 left-1/3 -mb-10 w-48 h-48 bg-sky-500/15 rounded-full blur-2xl pointer-events-none"></div>
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div className="space-y-1.5 max-w-2xl">
@@ -1896,9 +1867,7 @@ export default function ManagementView({
           </div>
         </div>
 
-        {/* ======================================================== */}
-        {/* RENTANG WAKTU PER TANGGAL KHUSUS 6 KARTU KPI ATAS */}
-        {/* ======================================================== */}
+        {/* Filter rentang waktu 6 kartu KPI */}
         <div className="mt-5 pt-4 border-t border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-amber-400 shrink-0" />
@@ -1968,9 +1937,7 @@ export default function ManagementView({
         </div>
       </div>
 
-      {/* ======================================================== */}
-      {/* 3. EXECUTIVE SCORECARD (6 KPI CARDS) */}
-      {/* ======================================================== */}
+      {/* 6 kartu KPI */}
       <motion.div
         variants={staggerContainerVariants}
         initial="hidden"
@@ -2136,9 +2103,7 @@ export default function ManagementView({
         </motion.div>
       </motion.div>
 
-      {/* ======================================================== */}
-      {/* 4. MOBILE HORIZONTAL TABS (Hanya muncul di Ponsel Layar Kecil < md) */}
-      {/* ======================================================== */}
+      {/* Navigasi tab mobile */}
       <div className="md:hidden flex items-center gap-1 sm:gap-2 border-b border-slate-200 dark:border-white/10 overflow-x-auto pb-1 text-sm font-semibold print:hidden mb-2">
         <button
           onClick={() => setActiveTab("overview")}
@@ -2189,9 +2154,7 @@ export default function ManagementView({
         </button>
       </div>
 
-      {/* ======================================================== */}
-      {/* 5. TAB 1: OVERVIEW & HEATMAP */}
-      {/* ======================================================== */}
+      {/* Tab 1: Ikhtisar & Heatmap */}
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
@@ -2438,9 +2401,7 @@ export default function ManagementView({
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* 6. TAB 2: MATRIKS KINERJA STAF TI (DENGAN TANGGAL & PAGINATION) */}
-      {/* ======================================================== */}
+      {/* Tab 2: Matriks kinerja staf TI */}
       {activeTab === "technicians" && (
         <div className="space-y-4">
           {/* Filter Tanggal Tab 2 */}
@@ -2571,9 +2532,7 @@ export default function ManagementView({
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* 7. TAB 3: AUDIT REKAPITULASI TIKET (DENGAN TANGGAL & PAGINATION) */}
-      {/* ======================================================== */}
+      {/* Tab 3: Audit rekapitulasi tiket */}
       {activeTab === "tickets" && (
         <div className="space-y-4">
           {/* Filter Tanggal Tab 3 */}
@@ -2686,10 +2645,28 @@ export default function ManagementView({
                   <tr>
                     <td
                       colSpan={9}
-                      className="py-8 text-center text-slate-500 dark:text-slate-400"
+                      className="py-10 text-center text-slate-500 dark:text-slate-400"
                     >
-                      Tidak ada tiket yang cocok dengan kriteria pencarian & rentang
-                      tanggal.
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <p className="text-xs">Tidak ada tiket yang cocok dengan parameter filter atau rentang tanggal yang dipilih.</p>
+                        {(unitFilter !== "all" || categoryFilter !== "all" || urgencyFilter !== "all" || statusFilter !== "all" || searchQuery || tab3StartDate || tab3EndDate) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUnitFilter("all");
+                              setCategoryFilter("all");
+                              setUrgencyFilter("all");
+                              setStatusFilter("all");
+                              setSearchQuery("");
+                              setTab3StartDate("");
+                              setTab3EndDate("");
+                            }}
+                            className="mt-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors border border-slate-200 dark:border-white/10"
+                          >
+                            Reset Semua Filter
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -2828,9 +2805,7 @@ export default function ManagementView({
         </div>
       )}
 
-      {/* ======================================================== */}
-      {/* 8. TAB 4: REKOMENDASI MANAJERIAL (DENGAN TANGGAL) */}
-      {/* ======================================================== */}
+      {/* Tab 4: Rekomendasi manajerial */}
       {activeTab === "recommendations" && (
         <div className="space-y-4">
           {/* Filter Tanggal Tab 4 */}
@@ -2950,9 +2925,7 @@ export default function ManagementView({
         </div>
       </div>
 
-      {/* ======================================================== */}
-      {/* 9. MODAL DETAIL AUDIT TIKET (DRILL DOWN) */}
-      {/* ======================================================== */}
+      {/* Modal detail audit tiket */}
       <AnimatePresence>
         {selectedTicket && (
           <motion.div

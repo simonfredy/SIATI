@@ -1,12 +1,7 @@
 import { Variants, TargetAndTransition } from "motion/react";
 
-/**
- * Variasi Animasi Terpadu SIATI Berbasis Motion
- */
-
 const smoothEase: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
-// Kontainer Kartu dengan Efek Masuk Bertahap (Staggered Children)
 export const staggerContainerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
@@ -18,7 +13,6 @@ export const staggerContainerVariants: Variants = {
   },
 };
 
-// Item Kartu Tunggal (Masuk dengan Lembut dari Bawah)
 export const cardItemVariants: Variants = {
   hidden: { opacity: 0, y: 14, scale: 0.98 },
   visible: {
@@ -32,7 +26,6 @@ export const cardItemVariants: Variants = {
   },
 };
 
-// Transisi Konten Tab Saat Berpindah Menu
 export const tabContentVariants: Variants = {
   hidden: { opacity: 0, y: 12 },
   visible: {
@@ -53,7 +46,6 @@ export const tabContentVariants: Variants = {
   },
 };
 
-// Animasi Modal Pop-up (Backdrop & Content)
 export const modalBackdropVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 0.25 } },
@@ -79,13 +71,11 @@ export const modalContentVariants: Variants = {
   },
 };
 
-// Hover State untuk Kartu Interaktif
 export const interactiveCardHover: TargetAndTransition = {
   y: -3,
   transition: { duration: 0.2, ease: "easeOut" },
 };
 
-// Tap State untuk Tombol Interaktif
 export const buttonTap: TargetAndTransition = {
   scale: 0.96,
   transition: { duration: 0.1 },
