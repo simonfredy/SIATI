@@ -1,12 +1,13 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { logoutAction } from "@/actions/auth";
 import { useRouter } from "next/navigation";
-import { LogOut, Activity, MapPin, Shield, BarChart3 } from "lucide-react";
+import { LogOut, Activity, MapPin, Shield, BarChart3, KeyRound } from "lucide-react";
 import { Role } from "@prisma/client";
 import ThemeToggle from "@/components/ThemeToggle";
 import RealtimeSync from "@/components/RealtimeSync";
+import ChangePasswordModal from "@/components/ChangePasswordModal";
 
 interface NavbarProps {
   user: {
@@ -28,6 +29,7 @@ export default function DashboardNavbar({
   activeView = "superadmin",
 }: NavbarProps) {
   const router = useRouter();
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   const handleLogout = async () => {
     await logoutAction();
@@ -124,15 +126,26 @@ export default function DashboardNavbar({
           </div>
         )}
 
-        {/* Action Realtime Status, Toggle Theme & Logout */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* Action Realtime Status, Toggle Theme, Ganti Password & Logout */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
           <RealtimeSync />
 
           <ThemeToggle />
 
           <button
+            type="button"
+            onClick={() => setIsPasswordModalOpen(true)}
+            className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+            title="Ganti Kata Sandi Akun"
+            aria-label="Ganti Kata Sandi Akun"
+          >
+            <KeyRound className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+            <span className="hidden md:inline">Ganti Password</span>
+          </button>
+
+          <button
             onClick={handleLogout}
-            className="p-2 sm:px-3.5 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+            className="p-2 sm:px-3.5 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
             title="Keluar dari Akun"
           >
             <LogOut className="w-4 h-4 text-rose-500" />
@@ -140,6 +153,11 @@ export default function DashboardNavbar({
           </button>
         </div>
       </div>
+
+      <ChangePasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+      />
     </header>
   );
 }

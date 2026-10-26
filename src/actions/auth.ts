@@ -3,7 +3,14 @@
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations";
 import { verifyCaptcha } from "@/lib/captcha";
-import { verifyPassword, signSessionToken, setSessionCookie, clearSessionCookie } from "@/lib/auth";
+import {
+  verifyPassword,
+  hashPassword,
+  signSessionToken,
+  setSessionCookie,
+  clearSessionCookie,
+  getCurrentUser,
+} from "@/lib/auth";
 import { headers } from "next/headers";
 
 export interface ActionResult<T = unknown> {
@@ -207,5 +214,147 @@ export async function logoutAction(): Promise<ActionResult> {
   return {
     success: true,
     message: "Berhasil keluar dari sistem.",
+  };
+}
+
+export async function changePasswordAction(formData: FormData): Promise<ActionResult> {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return {
+      success: false,
+      message: "Sesi autentikasi telah berakhir. Silakan login kembali.",
+      errorType: "GENERAL_ERROR",
+    };
+  }
+
+  const reqHeaders = await headers();
+  const ipAddress =
+    reqHeaders.get("x-real-ip") ||
+    reqHeaders.get("x-forwarded-for")?.split(",")[0].trim() ||
+    "127.0.0.1";
+  const userAgent = reqHeaders.get("user-agent") || "Unknown";
+
+  const currentPassword = (formData.get("currentPassword") as string) || "";
+  const newPassword = (formData.get("newPassword") as string) || "";
+  const confirmPassword = (formData.get("confirmPassword") as string) || "";
+
+  if (!currentPassword) {
+    return {
+      success: false,
+      message: "Kata sandi saat ini harus diisi.",
+      fieldErrors: { currentPassword: "Kata sandi saat ini wajib diisi." },
+      errorType: "GENERAL_ERROR",
+    };
+  }
+
+  if (!newPassword || newPassword.length < 8) {
+    return {
+      success: false,
+      message: "Kata sandi baru minimal 8 karakter.",
+      fieldErrors: { newPassword: "Kata sandi baru minimal 8 karakter." },
+      errorType: "GENERAL_ERROR",
+    };
+  }
+
+  if (!/[A-Z]/.test(newPassword)) {
+    return {
+      success: false,
+      message: "Kata sandi baru harus mengandung minimal 1 huruf besar (A-Z).",
+      fieldErrors: { newPassword: "Wajib mengandung huruf besar." },
+      errorType: "GENERAL_ERROR",
+    };
+  }
+
+  if (!/[0-9]/.test(newPassword)) {
+    return {
+      success: false,
+      message: "Kata sandi baru harus mengandung minimal 1 angka (0-9).",
+      fieldErrors: { newPassword: "Wajib mengandung angka." },
+      errorType: "GENERAL_ERROR",
+    };
+  }
+
+  if (!/[^A-Za-z0-9]/.test(newPassword)) {
+    return {
+      success: false,
+      message: "Kata sandi baru harus mengandung minimal 1 karakter khusus/simbol.",
+      fieldErrors: { newPassword: "Wajib mengandung karakter khusus." },
+      errorType: "GENERAL_ERROR",
+    };
+  }
+
+  if (newPassword !== confirmPassword) {
+    return {
+      success: false,
+      message: "Konfirmasi kata sandi baru tidak cocok.",
+      fieldErrors: { confirmPassword: "Konfirmasi kata sandi tidak cocok." },
+      errorType: "GENERAL_ERROR",
+    };
+  }
+
+  if (currentPassword === newPassword) {
+    return {
+      success: false,
+      message: "Kata sandi baru tidak boleh sama dengan kata sandi saat ini.",
+      fieldErrors: { newPassword: "Kata sandi baru tidak boleh sama dengan kata sandi lama." },
+      errorType: "GENERAL_ERROR",
+    };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: currentUser.userId },
+  });
+
+  if (!user || !user.isActive) {
+    return {
+      success: false,
+      message: "Akun pengguna tidak ditemukan atau tidak aktif.",
+      errorType: "GENERAL_ERROR",
+    };
+  }
+
+  const isCurrentValid = await verifyPassword(currentPassword, user.passwordHash);
+  if (!isCurrentValid) {
+    await prisma.systemAuditLog.create({
+      data: {
+        userId: user.id,
+        action: "PASSWORD_CHANGE_FAILED_WRONG_PASSWORD",
+        ipAddress,
+        userAgent,
+        payload: { reason: "wrong_current_password" },
+      },
+    });
+
+    return {
+      success: false,
+      message: "Kata sandi saat ini tidak sesuai.",
+      fieldErrors: { currentPassword: "Kata sandi saat ini salah." },
+      errorType: "CREDENTIALS_ERROR",
+    };
+  }
+
+  const newHash = await hashPassword(newPassword);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordHash: newHash,
+      failedLoginCount: 0,
+    },
+  });
+
+  await prisma.systemAuditLog.create({
+    data: {
+      userId: user.id,
+      action: "PASSWORD_CHANGED_SUCCESS",
+      ipAddress,
+      userAgent,
+      payload: { changedBy: user.username, role: user.role },
+    },
+  });
+
+  return {
+    success: true,
+    message: "Kata sandi berhasil diperbarui.",
   };
 }

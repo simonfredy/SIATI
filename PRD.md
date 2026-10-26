@@ -7,8 +7,8 @@
 | :--- | :--- |
 | **Nama Produk** | **SIATI** (Sistem Informasi Aduan & Ticketing IT) |
 | **Instansi Sasaran** | Rumah Sakit (Pemerintah, Daerah, Swasta) |
-| **Versi Dokumen** | **1.4.0** *(Updated with Antislop Code Hygiene, Clean UI & Engineering Standards)* |
-| **Status** | **Under Refactoring Review (Awaiting User Plan Approval)** |
+| **Versi Dokumen** | **1.5.0** *(Updated with Self-Service Password Management for All Roles & Antislop Mode: DURING)* |
+| **Status** | **Production Ready & Active Development** |
 | **Pola Arsitektur** | **Fullstack TypeScript (Next.js 16+ Turbopack App Router + PWA)** |
 | **Database & ORM** | **MariaDB 10.11+ LTS** dengan **Prisma ORM 6.x** |
 | **Server & Reverse Proxy** | **Nginx** (SSL TLS 1.3, Rate Limiting, Protected Storage via `X-Accel`) |
@@ -274,6 +274,19 @@ Sebagai administrator pengendali tertinggi, akun dengan peran `SUPERADMIN` dibek
    - Menyajikan informasi forensik lengkap: Stempel Waktu (Timestamp), Pelaku (User & Role), Event Aksi, IP Address penyerang/pengguna, User Agent, dan Payload JSON data.
 5. **Akses Meja Kendali Tiket Langsung (Omni-Channel Control)**:
    - Superadmin memiliki tab langsung ke *IT Staff Unified Workbench* untuk memantau antrean rumah sakit, menentukan tingkat urgensi, maupun mengambil tindakan langsung dalam kondisi darurat tanpa harus berganti peran akun.
+
+### 4.6 Fitur Ganti Kata Sandi Mandiri (*Self-Service Password Management* untuk Seluruh Role)
+Fitur ganti kata sandi mandiri disematkan pada bilah navigasi utama (`DashboardNavbar`) sehingga dapat diakses oleh seluruh pengguna di semua peran (`STAFF_USER`, `IT_STAFF`, `MANAGEMENT`, dan `SUPERADMIN`):
+1. **Verifikasi Keamanan Berlapis**:
+   - Mengharuskan verifikasi kata sandi lama/saat ini (`currentPassword`) menggunakan `bcrypt.compare` sebelum pembaruan diizinkan.
+   - Kata sandi baru minimal 8 karakter dengan anjuran kombinasi huruf besar, huruf kecil, dan angka.
+   - Pencegahan penggunaan kata sandi yang identik dengan kata sandi saat ini (*previous password reuse prevention*).
+   - Validasi kecocokan konfirmasi kata sandi baru.
+2. **Jejak Forensik Audit Otomatis**:
+   - Seluruh event dicatat ke `SystemAuditLog`: `PASSWORD_CHANGED_SUCCESS` untuk keberhasilan, atau `PASSWORD_CHANGE_FAILED_WRONG_PASSWORD` jika kata sandi lama salah, lengkap dengan alamat IP dan User Agent.
+3. **Antarmuka Pengguna & Aksesibilitas**:
+   - Menggunakan modal dialog animasi halus (`ChangePasswordModal`) dengan opsi intip/sembunyikan kata sandi (*show/hide password toggle*) yang dilengkapi cincin fokus keyboard (`focus-visible:ring-2`).
+   - Penutupan otomatis dengan tombol Escape (`ESC`) dan umpan balik status berhasil/gagal yang jelas.
 
 ---
 
