@@ -28,20 +28,29 @@ Sistem ini memastikan pelayanan medis di **Instalasi Gawat Darurat (IGD)**, **Ka
 * **Kerentanan Keamanan Siber**: RS pemerintah kerap menjadi target serangan siber (Ransomware, web shell lewat celah upload file, SQL Injection, dan brute force login).
 
 ### 💡 Solusi & Keunggulan Unggulan SIATI
-1. **Prioritas & Skala Urgensi Medis (P1 - P4)**:
-   * 🔴 **P1 - Darurat (EMERGENCY)**: Pelayanan pasien berhenti total di IGD, OK, ICU, Farmasi (Target SLA: < 5 Menit). Dilengkapi indikator visual detak merah berdenyut (*breathing pulse*).
+1. **Prioritas & Skala Urgensi Medis (P1 - P4) dengan Kunci Integritas**:
+   * 🔴 **P1 - Darurat (EMERGENCY)**: Pelayanan pasien berhenti total di IGD, OK, ICU, Farmasi (Target SLA: < 5 Menit).
    * 🟠 **P2 - Tinggi (HIGH)**: Layanan rawat inap & poliklinik ramai terganggu (Target SLA: < 15 Menit).
    * 🟡 **P3 - Sedang (MEDIUM)**: Gangguan administratif umum (Target SLA: < 30 Menit).
    * 🟢 **P4 - Rendah (LOW)**: Permintaan instalasi baru atau perawatan berkala (Target SLA: < 60 Menit).
+   * 🔒 **Penguncian Otomatis**: Saat tiket telah diselesaikan oleh teknisi, tingkat urgensi terkunci permanen dan tidak dapat diubah oleh peran apa pun (termasuk Super Admin) demi menjaga integritas data audit.
 2. **Stopwatch Pengerjaan Presisi Menit (SLA Tracking)**:
    * **MTTA** (*Mean Time to Acknowledge*): Stopwatch waktu respon dari tiket dibuat hingga teknisi mengambil tugas.
    * **MTTR** (*Mean Time to Repair*): Stopwatch pengerjaan aktif di lokasi (dilengkapi jeda jika menunggu pengadaan suku cadang/part).
-3. **Analitik Eksekutif Manajemen Rumah Sakit**:
+3. **Dokumen Berita Acara & Laporan Hasil Perbaikan Layanan TI (PDF / Cetak Otomatis)**:
+   * Diterbitkan secara otomatis dan sah melalui sistem setelah tiket selesai dan pelapor memberikan ulasan bintang kepuasan (CSAT).
+   * Dilengkapi **Tanda Tangan Digital QR Code Sejajar** antara Penerima Layanan (Pelapor) dan Staf IT pelaksana perbaikan.
+4. **Manajemen Kata Sandi Mandiri (Self-Service Password Management untuk Semua Role)**:
+   * Tersedia di bilah navigasi utama (`DashboardNavbar`) untuk seluruh role (`STAFF_USER`, `IT_STAFF`, `MANAGEMENT`, `SUPERADMIN`).
+   * Validasi 4 kriteria keamanan secara real-time dengan indikator visual dinamis (merah jika belum terpenuhi, otomatis hijau saat terpenuhi): minimal 8 karakter, huruf besar, angka, dan karakter khusus.
+5. **Analitik Eksekutif Manajemen Rumah Sakit**:
    * Scorecard 6 indikator utama dengan filter tanggal mandiri, peta konsentrasi kerusakan (*Heatmap Ruangan*), matriks produktivitas staf (SKP Pegawai), ekspor CSV UTF-8, dan cetak dokumen resmi berformat kop surat standar rumah sakit.
-4. **Sinkronisasi Data Real-Time (Server-Sent Events / SSE)**:
+6. **Sinkronisasi Data Real-Time (Server-Sent Events / SSE)**:
    * Antarmuka terupdate instan secara dua arah tanpa perlu me-reload halaman peramban.
-5. **Keamanan Standar Data Kesehatan (*Fortress Security*)**:
+7. **Keamanan Standar Data Kesehatan (*Fortress Security*)**:
    * Enkripsi Bcrypt Cost Factor 12, pengamanan brute-force lockout, dual-mode CAPTCHA, toggle intip sandi, notifikasi login generik anti-user enumeration, serta proteksi media via `X-Accel-Redirect`.
+8. **Higiene Rekayasa Kode & Clean UI (Standar Anti-Slop)**:
+   * Antarmuka bebas elemen generik (tanpa blur orbs atau dot-grid hiasan), ukuran tombol aksesibel minimum 44×44px, navigasi keyboard penuh (`focus-visible:ring-2`), serta dukungan zoom peramban seluler (WCAG 1.4.4).
 
 ---
 
@@ -51,10 +60,10 @@ Seluruh staf dan nakes **wajib login** menggunakan Akun Pegawai (Username / NIP)
 
 | Peran (Role) | Sasaran Pengguna | Fitur & Akses Utama |
 | :--- | :--- | :--- |
-| **`STAFF_USER`** | Dokter, Perawat, Bidan, Apoteker, Kasir | Form pelaporan kendala cepat (< 30 detik), unggah foto/video bukti kerusakan langsung dari kamera ponsel, pemantauan status tiket aktif secara real-time, ulasan rating bintang kepuasan layanan (CSAT). |
-| **`IT_STAFF`** | Teknisi Lapangan, Helpdesk SIMRS | Meja kerja terpadu (*Unified IT Workbench*), daftar antrean tiket seluruh RS, tombol respon stopwatch menit pengerjaan (*Ambil Tugas*, *Menuju Lokasi*, *Mulai Pengerjaan*, *Jeda Sparepart*, *Selesai*), penyesuaian tingkat urgensi. |
-| **`SUPERADMIN`** | Administrator Sistem & Infrastruktur TI | Master data ruangan/bangsal & zona gedung, **registrasi pengguna pegawai baru lengkap dengan upload foto profil & avatar placeholder cerdas**, kontrol status aktif/nonaktif akun instan (*Optimistic UI tanpa reload*), reset kata sandi, pengaturan target SLA menit kategori, pantauan log audit forensik, kendali antrean tiket (filter belum selesai vs selesai), **pengaturan identitas profil RS dinamis**, dan **Dual-View Switcher** ke Portal Manajemen. |
-| **`MANAGEMENT`** | Direksi & Manajemen Rumah Sakit | Scorecard 6 KPI eksekutif (Total Tiket, Kepatuhan SLA %, MTTA, MTTR, Skor CSAT, Insiden P1) dengan filter rentang tanggal mandiri, heatmap beban kendala ruangan terpaginasi, matriks produktivitas teknisi (SKP Grade A/B/C), audit stopwatch tiket, ekspor CSV, dan **cetak dokumen laporan resmi berformat kop instansi dinamis, glosarium singkatan teknis, serta lembar pengesahan tertanda STAFF IT di posisi kanan**. |
+| **`STAFF_USER`** | Dokter, Perawat, Bidan, Apoteker, Kasir | Form pelaporan kendala cepat (< 30 detik), unggah foto/video bukti kerusakan langsung dari kamera, pemantauan status tiket aktif secara real-time, ulasan rating kepuasan (CSAT), cetak/unduh **Dokumen Berita Acara & Laporan Hasil Perbaikan Layanan TI bertanda tangan QR Code**, dan **Ganti Kata Sandi Mandiri**. |
+| **`IT_STAFF`** | Teknisi Lapangan, Helpdesk SIMRS | Meja kerja terpadu (*Unified IT Workbench*), daftar antrean tiket seluruh RS, stopwatch menit pengerjaan (*Ambil Tugas*, *Menuju Lokasi*, *Mulai Pengerjaan*, *Jeda Sparepart*, *Selesai*), penyesuaian tingkat urgensi (**terkunci otomatis saat tiket selesai**), penerbitan dokumen laporan perbaikan dengan tanda tangan QR Code sejajar, dan **Ganti Kata Sandi Mandiri**. |
+| **`SUPERADMIN`** | Administrator Sistem & Infrastruktur TI | Master data ruangan/bangsal & zona gedung, registrasi pengguna pegawai baru dengan upload foto profil & avatar cerdas, kontrol status aktif/nonaktif akun instan, reset kata sandi, pengaturan target SLA menit kategori, pantauan log audit forensik, kendali antrean tiket (**dengan kunci integritas urgensi**), pengaturan profil RS dinamis, **Dual-View Switcher** ke Portal Manajemen, dan **Ganti Kata Sandi Mandiri**. |
+| **`MANAGEMENT`** | Direksi & Manajemen Rumah Sakit | Scorecard 6 KPI eksekutif dengan filter tanggal mandiri, heatmap ruangan terpaginasi, matriks kinerja teknisi (SKP Grade A/B/C), audit stopwatch tiket, ekspor CSV UTF-8, cetak laporan resmi berformat kop instansi dinamis, dan **Ganti Kata Sandi Mandiri**. |
 
 ---
 
@@ -565,6 +574,7 @@ Arsitektur multi-tier di mana susunannya dari terluar hingga terdalam adalah:
 | **Brute Force & Credential Stuffing** | Menebak password NIP staf medis menggunakan wordlist otomatis. | 1. Pembatasan laju (*Rate Limiting*) maksimal 5 req/menit per IP.<br/>2. **Dual-Mode CAPTCHA Gate** (Ketik kode gambar offline atau Turnstile).<br/>3. Penguncian akun (*Account Lockout*) 15 menit setelah 5x gagal login berturut-turut.<br/>4. Pesan error login generik tanpa membocorkan eksistensi username (*Anti-User Enumeration*).<br/>5. Hashing password aman menggunakan **Bcrypt Cost Factor 12** / Argon2id. |
 | **Broken Object Level Auth (BOLA / IDOR)** | Mengubah parameter ID di URL (`/tiket/101` -> `/tiket/102`) untuk mengintip data unit lain. | 1. ID tiket publik menggunakan **UUID v7** terenkripsi.<br/>2. Middleware verifikasi hak akses tiket: Pelapor hanya dapat melihat tiket unit kerjanya sendiri, teknisi hanya dapat melihat tiket yang ditugaskan. |
 | **Audit Log Tampering** | Oknum menghapus atau memanipulasi riwayat penanganan aduan. | 1. Tabel `system_audit_logs` dan `ticket_timeline_logs` bersifat **Append-Only** (hanya hak `INSERT`, tidak ada `UPDATE` maupun `DELETE` untuk role non-DBA). |
+| **Weak Password & Account Hijacking** | Penggunaan kata sandi lemah atau upaya perubahan kredensial tanpa otorisasi. | 1. Verifikasi wajib kata sandi saat ini via `bcrypt.compare`.<br/>2. Validasi 4 kriteria ketat real-time (min 8 karakter, huruf besar, angka, karakter khusus).<br/>3. Pencegahan penggunaan kata sandi yang sama dengan kata sandi lama.<br/>4. Jejak audit forensik tercatat otomatis (`PASSWORD_CHANGED_SUCCESS` dan `PASSWORD_CHANGE_FAILED_WRONG_PASSWORD`). |
 
 ---
 
@@ -596,5 +606,5 @@ Tambahkan baris berikut:
 
 ## 📄 Lisensi
 
-Hak Cipta © 2026 **SIATI - Sistem Informasi & Aduan Terpadu TI Rumah Sakit**. Dilindungi undang-undang.  
-Dikembangkan untuk meningkatkan efisiensi, akuntabilitas mutu, dan keandalan operasional fasilitas teknologi informasi pelayanan kesehatan rumah sakit.
+Perangkat lunak ini dirilis ke domain publik di bawah ketentuan **[The Unlicense](LICENSE)**.  
+Siapa pun bebas menggunakan, menyalin, memodifikasi, menggabungkan, menerbitkan, mendistribusikan, maupun mengomersialkan perangkat lunak ini secara terbuka tanpa batasan hak cipta untuk kepentingan rumah sakit dan fasilitas kesehatan.
