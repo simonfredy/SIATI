@@ -249,7 +249,7 @@ Pastikan aplikasi di-build untuk mode produksi:
 # 1. Build Next.js untuk production
 npm run build
 
-# 2. Jalankan dengan konfigurasi PM2 bawaan (Cluster Mode)
+# 2. Jalankan dengan konfigurasi PM2 bawaan
 pm2 start deploy/ecosystem.config.js
 
 # 3. Simpan state PM2 agar otomatis berjalan saat server reboot

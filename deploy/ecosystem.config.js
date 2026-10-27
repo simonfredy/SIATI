@@ -10,8 +10,8 @@ module.exports = {
       script: "node_modules/next/dist/bin/next",
       args: "start",
       cwd: "./",
-      instances: "max", // Menjalankan cluster mode sesuai jumlah core CPU server
-      exec_mode: "cluster",
+      instances: 1, // 1 Instance menjamin in-memory event emitter (SSE) sinkron untuk seluruh pengguna
+      exec_mode: "fork",
       autorestart: true,
       watch: false,
       max_memory_restart: "1G",

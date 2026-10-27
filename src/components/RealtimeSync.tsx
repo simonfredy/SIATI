@@ -150,6 +150,23 @@ export default function RealtimeSync() {
 
     connectSSE();
 
+    // 2. Polling Cadangan Berkala (setiap 12 detik) sebagai jaring pengaman jika SSE diblokir proxy / firewall
+    const fallbackPollInterval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        router.refresh();
+      }
+    }, 12000);
+
+    // 3. Penyegaran otomatis saat pengguna kembali membuka / fokus ke tab peramban
+    const handleVisibilityChange = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        router.refresh();
+      }
+    };
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+    }
+
     return () => {
       if (eventSource) {
         eventSource.close();
@@ -157,13 +174,49 @@ export default function RealtimeSync() {
       if (retryTimeout) {
         clearTimeout(retryTimeout);
       }
+      clearInterval(fallbackPollInterval);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      }
     };
   }, [router, removeToast]);
 
-  if (!mounted || toasts.length === 0) return null;
+  if (!mounted) return null;
 
-  // Render via React Portal ke document.body agar tidak terpotong oleh overflow/backdrop-filter parent header
-  return createPortal(
+  return (
+    <>
+      {/* Indikator Status Koneksi Real-Time di Header */}
+      <div className="flex items-center">
+        {connectionStatus === "connected" ? (
+          <span
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 shadow-sm"
+            title="Koneksi Siaran Real-Time Aktif (Server-Sent Events terhubung)"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="hidden sm:inline">Realtime</span>
+          </span>
+        ) : connectionStatus === "connecting" ? (
+          <span
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 shadow-sm"
+            title="Sedang menghubungkan ke siaran real-time..."
+          >
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+            <span className="hidden sm:inline">Menghubungkan</span>
+          </span>
+        ) : (
+          <span
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-500/30 shadow-sm"
+            title="Koneksi SSE sedang menunggu / dibatasi proxy. Auto-Sync berkala aktif."
+          >
+            <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+            <span className="hidden sm:inline">Auto-Sync</span>
+          </span>
+        )}
+      </div>
+
+      {/* Render Notifikasi Toast via React Portal */}
+      {toasts.length > 0 &&
+        createPortal(
     <div className="fixed top-20 right-3 sm:top-24 sm:right-6 z-[9999] flex flex-col gap-2.5 max-w-sm sm:max-w-md w-full pointer-events-none px-2 sm:px-0">
       {toasts.map((toast) => {
         const isEmergency = toast.urgency === "EMERGENCY";
@@ -251,5 +304,7 @@ export default function RealtimeSync() {
       })}
     </div>,
     document.body
+  )}
+    </>
   );
 }
