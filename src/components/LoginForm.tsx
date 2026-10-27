@@ -76,9 +76,8 @@ export default function LoginForm() {
       if (result.success) {
         setSuccessMessage("Login berhasil! Mengalihkan ke dashboard...");
         setTimeout(() => {
-          router.push("/dashboard");
-          router.refresh();
-        }, 800);
+          window.location.href = "/dashboard";
+        }, 500);
       } else {
         setErrorMessage(result.message || "Gagal masuk.");
         setFieldErrors(result.fieldErrors || {});

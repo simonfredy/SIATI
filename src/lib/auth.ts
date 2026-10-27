@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { Role } from "@prisma/client";
 
 const JWT_SECRET = new TextEncoder().encode(
@@ -71,10 +71,30 @@ export async function getCurrentUser(): Promise<SessionPayload | null> {
  */
 export async function setSessionCookie(token: string) {
   const cookieStore = await cookies();
+
+  // Deteksi apakah koneksi saat ini adalah HTTPS
+  let isHttps = false;
+  try {
+    const reqHeaders = await headers();
+    const proto = reqHeaders.get("x-forwarded-proto");
+    const referer = reqHeaders.get("referer") || "";
+    isHttps = proto === "https" || referer.startsWith("https://");
+  } catch {
+    // Abaikan jika dipanggil di luar konteks request
+  }
+
+  // Izinkan override eksplisit via .env COOKIE_SECURE jika diinginkan
+  let secureFlag = isHttps;
+  if (process.env.COOKIE_SECURE === "false") {
+    secureFlag = false;
+  } else if (process.env.COOKIE_SECURE === "true") {
+    secureFlag = true;
+  }
+
   cookieStore.set(AUTH_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: secureFlag,
+    sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24, // 24 jam
   });
@@ -87,8 +107,8 @@ export async function clearSessionCookie() {
   const cookieStore = await cookies();
   cookieStore.set(AUTH_COOKIE_NAME, "", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: false,
+    sameSite: "lax",
     path: "/",
     maxAge: 0,
   });

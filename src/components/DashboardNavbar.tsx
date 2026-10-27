@@ -33,8 +33,7 @@ export default function DashboardNavbar({
 
   const handleLogout = async () => {
     await logoutAction();
-    router.push("/");
-    router.refresh();
+    window.location.href = "/";
   };
 
   const getRoleBadge = (role: Role) => {
