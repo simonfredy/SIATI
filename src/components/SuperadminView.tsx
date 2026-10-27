@@ -44,6 +44,7 @@ import {
   Landmark,
   Loader2,
   Camera,
+  Server,
 } from "lucide-react";
 import {
   createUserAction,
@@ -58,6 +59,8 @@ import {
 import { updateTicketStatusAction } from "@/actions/tickets";
 import MediaViewerModal, { MediaAttachmentItem } from "@/components/MediaViewerModal";
 import TicketRepairReportModal from "@/components/TicketRepairReportModal";
+import InternalNetworkDiagnostic from "@/components/InternalNetworkDiagnostic";
+import ExternalApiConnectivity from "@/components/ExternalApiConnectivity";
 import { TicketItem } from "./ReporterView";
 import { motion, AnimatePresence } from "motion/react";
 import AnimatedCounter from "@/components/AnimatedCounter";
@@ -137,7 +140,14 @@ export default function SuperadminView({
   hospitalProfile,
 }: SuperadminViewProps) {
   const [activeTab, setActiveTab] = useState<
-    "USERS" | "UNITS" | "CATEGORIES" | "AUDIT_LOGS" | "TICKETS" | "HOSPITAL_PROFILE"
+    | "USERS"
+    | "UNITS"
+    | "CATEGORIES"
+    | "AUDIT_LOGS"
+    | "TICKETS"
+    | "HOSPITAL_PROFILE"
+    | "INTERNAL_NETWORK"
+    | "EXTERNAL_CONNECTIVITY"
   >("USERS");
 
   // Expand-Collapse State untuk Sidebar Tablet & Laptop / PC
@@ -1002,7 +1012,109 @@ export default function SuperadminView({
                 )}
               </button>
 
-              {/* Menu 6: PORTAL MANAJEMEN */}
+              {/* Menu 7: INTERNAL_NETWORK (Jaringan Server & LAN) */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("INTERNAL_NETWORK")}
+                title={
+                  isSidebarCollapsed
+                    ? "Diagnostik Jaringan Server & LAN"
+                    : undefined
+                }
+                className={`w-full rounded-xl transition-all flex items-center group ${
+                  isSidebarCollapsed
+                    ? "justify-center p-2.5"
+                    : "justify-between p-2.5"
+                } ${
+                  activeTab === "INTERNAL_NETWORK"
+                    ? "bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/60 font-bold shadow-sm"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                      activeTab === "INTERNAL_NETWORK"
+                        ? "bg-cyan-600 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-cyan-600 dark:group-hover:text-cyan-400"
+                    }`}
+                  >
+                    <Server className="w-4 h-4" />
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <div className="min-w-0 text-left">
+                      <div className="text-xs truncate">Jaringan Server & LAN</div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        Kesehatan server & ping LAN
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                      activeTab === "INTERNAL_NETWORK"
+                        ? "bg-cyan-200/80 dark:bg-cyan-900/60 text-cyan-900 dark:text-cyan-200"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
+                    LAN RS
+                  </span>
+                )}
+              </button>
+
+              {/* Menu 8: EXTERNAL_CONNECTIVITY (Konektivitas API & Web) */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("EXTERNAL_CONNECTIVITY")}
+                title={
+                  isSidebarCollapsed
+                    ? "Konektivitas API & Layanan Web Eksternal"
+                    : undefined
+                }
+                className={`w-full rounded-xl transition-all flex items-center group ${
+                  isSidebarCollapsed
+                    ? "justify-center p-2.5"
+                    : "justify-between p-2.5"
+                } ${
+                  activeTab === "EXTERNAL_CONNECTIVITY"
+                    ? "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 font-bold shadow-sm"
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                      activeTab === "EXTERNAL_CONNECTIVITY"
+                        ? "bg-blue-600 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                    }`}
+                  >
+                    <Globe className="w-4 h-4" />
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <div className="min-w-0 text-left">
+                      <div className="text-xs truncate">Konektivitas API & Web</div>
+                      <div className="text-[10px] text-slate-400 truncate">
+                        BPJS, SatuSehat & internet
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!isSidebarCollapsed && (
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
+                      activeTab === "EXTERNAL_CONNECTIVITY"
+                        ? "bg-blue-200/80 dark:bg-blue-900/60 text-blue-900 dark:text-blue-200"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
+                    Integrasi
+                  </span>
+                )}
+              </button>
+
+              {/* Menu 9: PORTAL MANAJEMEN */}
               <div className="pt-2 mt-2 border-t border-slate-100 dark:border-white/10">
                 <a
                   href="/dashboard?view=management"
@@ -1247,6 +1359,32 @@ export default function SuperadminView({
           >
             <Building2 className="w-4 h-4" />
             <span>Profil RS</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("INTERNAL_NETWORK")}
+            className={`py-2.5 px-3 sm:px-4 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap flex items-center gap-2 transition-all shadow-sm ${
+              activeTab === "INTERNAL_NETWORK"
+                ? "bg-white dark:bg-slate-900 text-cyan-600 dark:text-cyan-400 ring-2 ring-cyan-500/20 shadow-md"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <Server className="w-4 h-4" />
+            <span>Jaringan Server</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("EXTERNAL_CONNECTIVITY")}
+            className={`py-2.5 px-3 sm:px-4 rounded-xl font-bold text-xs sm:text-sm whitespace-nowrap flex items-center gap-2 transition-all shadow-sm ${
+              activeTab === "EXTERNAL_CONNECTIVITY"
+                ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 ring-2 ring-blue-500/20 shadow-md"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <Globe className="w-4 h-4" />
+            <span>API & Web</span>
           </button>
 
           <a
@@ -2850,6 +2988,12 @@ export default function SuperadminView({
           </div>
         </div>
       )}
+
+      {/* Tab 7: Diagnostik Jaringan Server & LAN */}
+      {activeTab === "INTERNAL_NETWORK" && <InternalNetworkDiagnostic />}
+
+      {/* Tab 8: Konektivitas API & Layanan Web Eksternal */}
+      {activeTab === "EXTERNAL_CONNECTIVITY" && <ExternalApiConnectivity />}
         </motion.div>
       </AnimatePresence>
         </div>

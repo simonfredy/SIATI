@@ -218,3 +218,26 @@ model HospitalProfile {
   @@map("hospital_profile")
 }
 
+model NetworkDeviceTarget {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(100) // Contoh: PC Kasir IGD, Server SIMRS, Printer Resep
+  host      String   @db.VarChar(150) // IP atau Hostname
+  port      Int      @default(80)
+  category  String   @default("PC") @db.VarChar(50) // PC, SERVER, PRINTER, ROUTER, DATABASE
+  createdAt DateTime @default(now())
+
+  @@map("network_device_targets")
+}
+
+model ExternalEndpointTarget {
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(150) // Contoh: BPJS V-Claim, BPJS Antrean, SatuSehat Platform
+  description String?  @db.VarChar(255)
+  targetUrl   String   @db.VarChar(500)
+  type        String   @default("BPJS") @db.VarChar(50) // BPJS, KEMENKES, PUBLIC_DNS, WEBSITE_RS, OTHER
+  httpMethod  String   @default("HEAD") @db.VarChar(10) // HEAD, GET
+  createdAt   DateTime @default(now())
+
+  @@map("external_endpoint_targets")
+}
+
