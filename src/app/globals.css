@@ -16,11 +16,33 @@
   --foreground: #f8fafc;
 }
 
+html {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
   background-color: var(--background);
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Standar Aplikasi Native Mobile: Kunci font-size minimal 16px pada seluruh input
+   (textbox, textarea, select) agar browser iOS Safari dan Android Chrome TIDAK melakukan auto-zoom */
+@media screen and (max-width: 768px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
 }
 
 @media print {

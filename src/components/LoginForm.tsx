@@ -93,8 +93,8 @@ export default function LoginForm() {
   const isCredentialsError = errorType === "CREDENTIALS_ERROR" || (!!fieldErrors.username && !!fieldErrors.password);
 
   return (
-    <div className="w-full max-w-md mx-auto p-2 xs:p-4 sm:p-6">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200/80 dark:border-white/10 p-5 sm:p-8 transition-colors duration-200">
+    <div className="w-full max-w-md mx-auto px-1 sm:px-0">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200/80 dark:border-white/10 p-4 sm:p-8 transition-colors duration-200">
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-14 h-14 bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-2xl mb-3 shadow-inner border border-sky-100 dark:border-sky-500/20">
             <ShieldCheck className="w-8 h-8" />
@@ -187,7 +187,7 @@ export default function LoginForm() {
                 placeholder="Contoh: hendra, dewi, admin"
                 autoCapitalize="none"
                 autoCorrect="off"
-                className={`w-full pl-11 pr-4 py-3 rounded-xl border text-slate-900 dark:text-white text-sm focus:outline-none transition-all ${
+                className={`w-full pl-11 pr-4 py-3 rounded-xl border text-slate-900 dark:text-white text-base sm:text-sm focus:outline-none transition-all ${
                   fieldErrors.username
                     ? "border-rose-500 bg-rose-50/50 dark:bg-rose-950/20 ring-2 ring-rose-500/20 focus:ring-rose-500 focus:border-rose-500"
                     : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-sky-500 focus:bg-white dark:focus:bg-slate-800"
@@ -236,7 +236,7 @@ export default function LoginForm() {
                   }
                 }}
                 placeholder="Masukkan kata sandi"
-                className={`w-full pl-11 pr-11 py-3 rounded-xl border text-slate-900 dark:text-white text-sm focus:outline-none transition-all ${
+                className={`w-full pl-11 pr-11 py-3 rounded-xl border text-slate-900 dark:text-white text-base sm:text-sm focus:outline-none transition-all ${
                   fieldErrors.password
                     ? "border-rose-500 bg-rose-50/50 dark:bg-rose-950/20 ring-2 ring-rose-500/20 focus:ring-rose-500 focus:border-rose-500"
                     : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-sky-500 focus:bg-white dark:focus:bg-slate-800"
@@ -291,10 +291,10 @@ export default function LoginForm() {
               </button>
             </div>
 
-            <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-2.5 sm:gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
               {/* Tampilan Gambar SVG Kode CAPTCHA */}
               <div
-                className={`h-12 w-full xs:w-40 sm:w-44 shrink-0 border rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-inner transition-colors ${
+                className={`h-12 w-full sm:w-44 shrink-0 border rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center shadow-inner transition-colors ${
                   fieldErrors.captchaAnswer
                     ? "border-rose-400 dark:border-rose-500/60 ring-2 ring-rose-500/20"
                     : "border-slate-200 dark:border-slate-700"
@@ -333,7 +333,7 @@ export default function LoginForm() {
                   placeholder="Ketik kode"
                   autoComplete="off"
                   autoCapitalize="characters"
-                  className={`w-full px-3.5 py-3 rounded-xl border text-slate-900 dark:text-white text-sm text-center font-bold tracking-widest uppercase focus:outline-none transition-all ${
+                  className={`w-full px-3.5 py-3 rounded-xl border text-slate-900 dark:text-white text-base sm:text-sm text-center font-bold tracking-widest uppercase focus:outline-none transition-all ${
                     fieldErrors.captchaAnswer
                       ? "border-rose-500 bg-rose-50/50 dark:bg-rose-950/20 ring-2 ring-rose-500/20 focus:ring-rose-500 focus:border-rose-500"
                       : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-sky-500 focus:bg-white dark:focus:bg-slate-800"

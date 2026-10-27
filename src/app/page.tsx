@@ -13,24 +13,24 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between transition-colors duration-200">
-      <header className="w-full px-4 sm:px-6 py-3.5 flex items-center justify-between border-b border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 shadow-sm">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-sky-100 dark:bg-sky-500/20 flex items-center justify-center text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-400/30">
-            <Activity className="w-5 h-5" />
+    <div className="min-h-dvh w-full max-w-full overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between transition-colors duration-200">
+      <header className="w-full px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between border-b border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 shadow-sm shrink-0">
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-sky-100 dark:bg-sky-500/20 flex items-center justify-center text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-400/30">
+            <Activity className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div>
             <span className="text-slate-900 dark:text-white font-bold text-sm tracking-wide">SIATI</span>
-            <span className="text-slate-500 dark:text-slate-400 text-xs block -mt-0.5">Sistem Aduan & Ticketing TI</span>
+            <span className="text-slate-500 dark:text-slate-400 text-[11px] sm:text-xs block -mt-0.5">Sistem Aduan & Ticketing TI</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <ThemeToggle />
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
+      <main className="flex-1 flex items-center justify-center py-4 sm:py-12 px-2 sm:px-6 lg:px-8">
         <div className="w-full max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
           <div className="hidden lg:flex lg:col-span-6 flex-col space-y-6">
             <div className="space-y-3">
@@ -79,8 +79,8 @@ export default async function HomePage() {
         </div>
       </main>
 
-      <footer className="py-4 px-4 border-t border-slate-200 dark:border-white/10 text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">
-        <div className="max-w-md mx-auto flex items-center justify-between text-[11px]">
+      <footer className="py-3 px-3 sm:px-4 border-t border-slate-200 dark:border-white/10 text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 shrink-0">
+        <div className="max-w-md mx-auto flex flex-wrap items-center justify-center sm:justify-between gap-2.5 text-[11px]">
           <span className="flex items-center gap-1">
             <Cpu className="w-3.5 h-3.5 text-sky-500" />
             v1.4.0 LTS
