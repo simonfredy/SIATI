@@ -96,6 +96,16 @@ async function main() {
       departmentUnitId: itUnit!.id,
     },
     {
+      username: "operator",
+      nip: "199402022022031004",
+      fullName: "Budi Teknisi TI (Operator)",
+      phoneNumber: "081234567894",
+      telegramChatId: "",
+      role: Role.IT_STAFF,
+      passwordHash: defaultPasswordHash,
+      departmentUnitId: itUnit!.id,
+    },
+    {
       username: "siti",
       nip: "199704042023042004",
       fullName: "Ns. Siti Rahma (Perawat IGD)",
@@ -124,23 +134,26 @@ async function main() {
   const existingTicketsCount = await prisma.ticket.count();
   if (existingTicketsCount === 0) {
     console.log("📊 Mengisi tiket percontohan realistis untuk analitik manajemen...");
-    const sitiUser = await prisma.user.findUnique({ where: { username: "siti" } });
-    const operatorUser = await prisma.user.findUnique({ where: { username: "operator" } });
-    const rianUser = await prisma.user.findUnique({ where: { username: "rian" } });
+    const defaultUser = await prisma.user.findFirst();
+    const sitiUser = (await prisma.user.findUnique({ where: { username: "siti" } })) || defaultUser;
+    const rianUser = (await prisma.user.findUnique({ where: { username: "rian" } })) || defaultUser;
+    const operatorUser = (await prisma.user.findUnique({ where: { username: "operator" } })) || rianUser || defaultUser;
 
-    const okUnit = await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-OK-01" } });
-    const farmasiUnit = await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-FARMASI-RJ" } });
-    const labUnit = await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-LAB-01" } });
-    const radUnit = await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-RAD-01" } });
-    const bangsalUnit = await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-BANGSAL-MELATI" } });
-    const poliDalamUnit = await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-POLI-DALAM" } });
-    const kasirUnit = await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-KASIR-01" } });
+    const defaultUnit = (await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-IGD-01" } })) || (await prisma.departmentUnit.findFirst());
+    const okUnit = (await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-OK-01" } })) || defaultUnit;
+    const farmasiUnit = (await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-FARMASI-RJ" } })) || defaultUnit;
+    const labUnit = (await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-LAB-01" } })) || defaultUnit;
+    const radUnit = (await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-RAD-01" } })) || defaultUnit;
+    const bangsalUnit = (await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-BANGSAL-MELATI" } })) || defaultUnit;
+    const poliDalamUnit = (await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-POLI-DALAM" } })) || defaultUnit;
+    const kasirUnit = (await prisma.departmentUnit.findFirst({ where: { qrIdentifier: "LOC-KASIR-01" } })) || defaultUnit;
 
-    const catSimrs = await prisma.category.findFirst({ where: { name: "SIMRS & RME" } });
-    const catSoftware = await prisma.category.findFirst({ where: { name: "Software Lainnya" } });
-    const catHardware = await prisma.category.findFirst({ where: { name: "Hardware & PC" } });
-    const catJaringan = await prisma.category.findFirst({ where: { name: "Jaringan" } });
-    const catFasilitas = await prisma.category.findFirst({ where: { name: "Fasilitas Penunjang TI" } });
+    const defaultCat = (await prisma.category.findFirst({ where: { name: "SIMRS & RME" } })) || (await prisma.category.findFirst());
+    const catSimrs = defaultCat;
+    const catSoftware = (await prisma.category.findFirst({ where: { name: "Software Lainnya" } })) || defaultCat;
+    const catHardware = (await prisma.category.findFirst({ where: { name: "Hardware & PC" } })) || defaultCat;
+    const catJaringan = (await prisma.category.findFirst({ where: { name: "Jaringan" } })) || defaultCat;
+    const catFasilitas = (await prisma.category.findFirst({ where: { name: "Fasilitas Penunjang TI" } })) || defaultCat;
 
     const sampleTickets = [
       {
