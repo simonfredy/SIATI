@@ -25,19 +25,17 @@ export interface RealtimeEventPayload {
   entity?: string;
 }
 
-// Global singleton EventEmitter across hot-reloads and requests in Node.js runtime
+// Global singleton EventEmitter across Next.js chunks, hot-reloads, and requests in Node.js runtime
 const globalForRealtime = globalThis as unknown as {
   realtimeEmitter?: EventEmitter;
 };
 
-export const realtimeEmitter =
-  globalForRealtime.realtimeEmitter ?? new EventEmitter();
-
-realtimeEmitter.setMaxListeners(250);
-
-if (process.env.NODE_ENV !== "production") {
-  globalForRealtime.realtimeEmitter = realtimeEmitter;
+if (!globalForRealtime.realtimeEmitter) {
+  globalForRealtime.realtimeEmitter = new EventEmitter();
+  globalForRealtime.realtimeEmitter.setMaxListeners(500);
 }
+
+export const realtimeEmitter = globalForRealtime.realtimeEmitter;
 
 /**
  * Mendorong event real-time ke seluruh klien yang sedang terhubung melalui Server-Sent Events (SSE)
